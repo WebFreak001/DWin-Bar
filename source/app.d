@@ -24,10 +24,10 @@ void main(string[] args)
 	panels.addGlobalWidget(new WorkspaceWidget(backend, fontPrimary, fontSecondary, commonInfo));
 	panels.addGlobalWidget(new ClockWidget(fontPrimary, fontSecondary, commonInfo));
 
-	commonInfo.screen = Screen.First;
+	commonInfo.screen = Screen.First; // 0
 	panels.addPanel(commonInfo);
-	commonInfo.screen = Screen.Second;
-	panels.addPanel(commonInfo);
+	//commonInfo.screen = Screen.Second; // 1
+	//panels.addPanel(commonInfo);
 
 	panels.start();
 }
