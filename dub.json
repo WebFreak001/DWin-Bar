@@ -1,0 +1,20 @@
+{
+	"name": "dwin-bar",
+	"description": "A minimal D application.",
+	"copyright": "Copyright © 2016, webfreak",
+	"authors": [
+		"webfreak"
+	],
+	"dependencies": {
+		"cairod": "~>0.0.1-alpha.3+1.10.2",
+		"x11": "~>1.0.13",
+		"imageformats": "~>5.2.0"
+	},
+	"libs": [
+		"Xinerama"
+	],
+	"versions": [
+		"CairoXlibSurface",
+		"CairoPNG"
+	]
+}
