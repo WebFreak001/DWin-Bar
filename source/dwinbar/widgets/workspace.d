@@ -7,10 +7,6 @@ import dwinbar.backend.xbackend;
 
 import dwinbar.cairoext;
 
-import x11.X;
-import x11.Xlib;
-import x11.Xatom;
-
 import cairo.cairo;
 
 import std.format;
@@ -47,41 +43,22 @@ class WorkspaceWidget : Widget
 		int desktop = (cast(int) len) / 32;
 		if (desktop >= 0 && desktop < desktops.length)
 		{
-			XChangeProperty(x.display, x.rootWindow,
-				XAtom[AtomName._NET_CURRENT_DESKTOP], XA_CARDINAL, 32,
-				PropModeReplace, cast(ubyte*)&desktop, 1);
+			x.currentWorkspace = desktop;
 		}
 	}
 
 	void updateLazy()
 	{
-		Atom returnType;
-		int format;
-		ulong number, bytesAfter;
-		uint* cardinal;
-		ubyte* strs;
-
-		if (XGetWindowProperty(x.display, x.rootWindow,
-				XAtom[AtomName._NET_DESKTOP_NAMES], 0, 64, false,
-				AnyPropertyType, &returnType, &format, &number,
-				&bytesAfter, cast(ubyte**)&strs) == 0 && format == 8)
+		if (x.tryGetWorkspaceNames(_desktops))
 		{
-			_desktops = (cast(string) strs[0 .. number].idup).split('\0')[0 .. $ - 1];
 			_hasNames = true;
 		}
 		else
 		{
 			_hasNames = false;
-			XGetWindowProperty(x.display, x.rootWindow,
-				XAtom[AtomName._NET_NUMBER_OF_DESKTOPS], 0, 1, false,
-				XA_CARDINAL, &returnType, &format, &number, &bytesAfter,
-				cast(ubyte**)&cardinal);
-			_desktopLen = cardinal[0];
+			_desktopLen = x.numWorkspaces;
 		}
-		XGetWindowProperty(x.display, x.rootWindow,
-			XAtom[AtomName._NET_CURRENT_DESKTOP], 0, 1, false, XA_CARDINAL,
-			&returnType, &format, &number, &bytesAfter, cast(ubyte**)&cardinal);
-		_currentDesktop = cardinal[0];
+		_currentDesktop = x.currentWorkspace;
 	}
 
 	void draw(Context context, double start)

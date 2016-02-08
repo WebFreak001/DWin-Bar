@@ -118,6 +118,8 @@ struct ScreenInfo
 
 static Atom[AtomName] XAtom;
 
+enum Success = 0;
+
 class XBackend
 {
 	this(char* displayName = null)
@@ -186,6 +188,55 @@ class XBackend
 		XChangeProperty(_display, _root, XAtom[AtomName._NET_ACTIVE_WINDOW],
 			XA_WINDOW, 32, PropModeReplace, cast(ubyte*)&window, 1);
 		XSetInputFocus(_display, window, RevertToNone, CurrentTime);
+	}
+
+	uint currentWorkspace() @property
+	{
+		Atom returnType;
+		int format;
+		ulong number, bytesAfter;
+		uint* cardinal;
+		assert(XGetWindowProperty(_display, _root,
+			XAtom[AtomName._NET_CURRENT_DESKTOP], 0, 1, false, XA_CARDINAL,
+			&returnType, &format, &number, &bytesAfter, cast(ubyte**)&cardinal) == Success);
+		return cardinal[0];
+	}
+
+	void currentWorkspace(uint value) @property
+	{
+		assert(XChangeProperty(_display, _root,
+			XAtom[AtomName._NET_CURRENT_DESKTOP], XA_CARDINAL, 32,
+			PropModeReplace, cast(ubyte*)&value, 1) == Success);
+	}
+
+	uint numWorkspaces() @property
+	{
+		Atom returnType;
+		int format;
+		ulong number, bytesAfter;
+		uint* cardinal;
+		assert(XGetWindowProperty(_display, _root,
+			XAtom[AtomName._NET_NUMBER_OF_DESKTOPS], 0, 1, false, XA_CARDINAL,
+			&returnType, &format, &number, &bytesAfter, cast(ubyte**)&cardinal) == Success);
+		return cardinal[0];
+	}
+
+	bool tryGetWorkspaceNames(out string[] names)
+	{
+		Atom returnType;
+		int format;
+		ulong number, bytesAfter;
+		ubyte* strs;
+
+		if (XGetWindowProperty(_display, _root,
+				XAtom[AtomName._NET_DESKTOP_NAMES], 0, 64, false,
+				AnyPropertyType, &returnType, &format, &number,
+				&bytesAfter, cast(ubyte**)&strs) == 0 && format == 8)
+		{
+			names = (cast(string) strs[0 .. number].idup).split('\0')[0 .. $ - 1];
+			return true;
+		}
+		return false;
 	}
 
 private:
