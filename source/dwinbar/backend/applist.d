@@ -155,6 +155,9 @@ size_t findBestIcon(ulong[] data)
 {
 	import std.math;
 
+	if (data.length < 3)
+		return 0;
+
 	size_t currentBest = 0;
 	ulong currentArea = data[0] * data[1];
 	enum targetArea = (appIconSize * 2) * (appIconSize * 2);
