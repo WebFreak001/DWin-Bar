@@ -188,6 +188,7 @@ class XBackend
 		XChangeProperty(_display, _root, XAtom[AtomName._NET_ACTIVE_WINDOW],
 			XA_WINDOW, 32, PropModeReplace, cast(ubyte*)&window, 1);
 		XSetInputFocus(_display, window, RevertToNone, CurrentTime);
+		XRaiseWindow(_display, window);
 	}
 
 	uint currentWorkspace() @property
