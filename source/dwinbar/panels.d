@@ -5,6 +5,7 @@ import x11.X;
 
 import dwinbar.backend.panel;
 import dwinbar.backend.xbackend;
+import dwinbar.backend.systray;
 
 import dwinbar.widgets.widget;
 
@@ -19,6 +20,9 @@ class Panels
 
 	void start()
 	{
+		if (enableTaskBar)
+			SysTray.instance.start(_backend);
+
 		foreach (panel; _panels)
 			foreach (widget; _widgets)
 				panel.addWidget(widget);
@@ -26,7 +30,7 @@ class Panels
 		foreach (panel; _panels)
 			panel.sortWidgets();
 
-		bool running = true;
+		running = true;
 		XEvent e;
 
 		while (running)
@@ -39,6 +43,12 @@ class Panels
 					if (e.xclient.message_type == XAtom[AtomName.WM_PROTOCOLS]
 							&& cast(Atom) e.xclient.data.l[0] == XAtom[AtomName.WM_DELETE_WINDOW])
 						running = false;
+					if (_enableTaskBar
+							&& e.xclient.message_type == XAtom[AtomName._NET_SYSTEM_TRAY_OPCODE]
+							&& e.xclient.window == SysTray.instance.handle)
+					{
+						SysTray.instance.handleEvent(e.xclient);
+					}
 				}
 
 				foreach (panel; _panels)
@@ -65,7 +75,21 @@ class Panels
 		_widgets ~= widgets;
 	}
 
+	auto enableTaskBar() @property
+	{
+		return _enableTaskBar;
+	}
+
+	auto enableTaskBar(bool value) @property
+	{
+		if (running)
+			throw new Exception("Can't enable task bar while bar is running");
+		_enableTaskBar = value;
+	}
+
 private:
+	bool running = false;
+	bool _enableTaskBar = false;
 	XBackend _backend;
 	Panel[] _panels;
 	Widget[] _widgets;

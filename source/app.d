@@ -2,6 +2,7 @@ import dwinbar.backend.xbackend;
 import dwinbar.backend.panel;
 
 import dwinbar.widgets.clock;
+import dwinbar.widgets.tray;
 import dwinbar.widgets.workspace;
 
 import dwinbar.panels;
@@ -20,9 +21,12 @@ void main(string[] args)
 	string fontSecondary = "Roboto Light";
 
 	auto commonInfo = PanelInfo(Screen.First, int.min, int.min, 0, 40, Side.Bottom);
+	
+	panels.enableTaskBar = true;
 
 	panels.addGlobalWidget(new WorkspaceWidget(backend, fontPrimary, fontSecondary, commonInfo));
 	panels.addGlobalWidget(new ClockWidget(fontPrimary, fontSecondary, commonInfo));
+	panels.addGlobalWidget(new TrayWidget(fontPrimary, fontSecondary, commonInfo));
 
 	commonInfo.screen = Screen.First; // 0
 	panels.addPanel(commonInfo);

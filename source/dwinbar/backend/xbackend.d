@@ -2,6 +2,7 @@ module dwinbar.backend.xbackend;
 
 import std.string;
 import std.traits;
+import std.conv;
 
 import core.thread;
 
@@ -95,6 +96,7 @@ enum AtomName : string
 	_NET_SYSTEM_TRAY_ORIENTATION = "_NET_SYSTEM_TRAY_ORIENTATION",
 	_NET_SYSTEM_TRAY_ICON_SIZE = "_NET_SYSTEM_TRAY_ICON_SIZE",
 	_NET_SYSTEM_TRAY_PADDING = "_NET_SYSTEM_TRAY_PADDING",
+	_NET_SYSTEM_TRAY_VISUAL = "_NET_SYSTEM_TRAY_VISUAL",
 	_XEMBED = "_XEMBED",
 	_XEMBED_INFO = "_XEMBED_INFO",
 	_NET_WM_PID = "_NET_WM_PID",
@@ -109,6 +111,11 @@ enum AtomName : string
 	XdndActionCopy = "XdndActionCopy",
 	XdndFinished = "XdndFinished",
 	TARGETS = "TARGETS",
+}
+
+enum SpecialAtom
+{
+	SystemTray = 0
 }
 
 struct ScreenInfo
@@ -145,6 +152,13 @@ class XBackend
 
 		XSetErrorHandler(cast(XErrorHandler)(&errorHandler));
 
+		_atoms = new Atom[SpecialAtom.max + 1];
+		_atoms[SpecialAtom.SystemTray] = XInternAtom(_display,
+			("_NET_SYSTEM_TRAY_S" ~ _screen.to!string).toStringz, false);
+
+		foreach (i, atom; _atoms)
+			assert(atom, "No such special atom: " ~ (cast(SpecialAtom) i).to!string);
+
 		loadScreens();
 	}
 
@@ -153,32 +167,32 @@ class XBackend
 		XCloseDisplay(_display);
 	}
 
-	auto display() @property
+	Display* display() @property
 	{
 		return _display;
 	}
 
-	auto screen() @property
+	int screen() @property
 	{
 		return _screen;
 	}
 
-	auto rootWindow() @property
+	Window rootWindow() @property
 	{
 		return _root;
 	}
 
-	auto vinfo() @property
+	XVisualInfo vinfo() @property
 	{
 		return _vinfo;
 	}
 
-	auto visual() @property
+	Visual* visual() @property
 	{
 		return _vinfo.visual;
 	}
 
-	auto screens() @property
+	ScreenInfo[] screens() @property
 	{
 		return _screens;
 	}
@@ -239,6 +253,11 @@ class XBackend
 		return false;
 	}
 
+	auto satom() @property
+	{
+		return _atoms;
+	}
+
 private:
 	void loadScreens()
 	{
@@ -275,6 +294,7 @@ private:
 		_screens ~= ScreenInfo(0, 0, cast(short) screenWidth, cast(short) screenHeight);
 	}
 
+	Atom[] _atoms;
 	ScreenInfo[] _screens;
 	Display* _display;
 	int _screen;

@@ -34,7 +34,64 @@ struct AppInfo
 
 enum Success = 0;
 
-AppInfo[Window] cache;
+private AppInfo[Window] cache;
+
+AppInfo fetchWindowInfo(alias targetIconSize = appIconSize)(XBackend backend, Window app)
+{
+	XTextProperty prop;
+	XGetTextProperty(backend.display, app, &prop, XAtom[AtomName._NET_WM_NAME]);
+	AppInfo info;
+	if ((app in cache)!is null)
+		info = cache[app];
+	info.window = app;
+	info.title = cast(string) prop.value[0 .. prop.nitems].dup;
+	info.state = AppState.visible;
+
+	XWMHints* hints = XGetWMHints(backend.display, app);
+	if (hints)
+	{
+		scope (exit)
+			XFree(hints);
+		if (hints.flags & XUrgencyHint)
+			info.state = AppState.urgent;
+	}
+
+	if ((app in cache) is null)
+	{
+		Atom actualType;
+		int actualFormat;
+		ulong numItems, bytesAfter;
+		ulong* cardResult;
+		if (XGetWindowProperty(backend.display, app,
+				XAtom[AtomName._NET_WM_ICON], 0, uint.max, false, XA_CARDINAL,
+				&actualType, &actualFormat, &numItems, &bytesAfter,
+				cast(ubyte**)&cardResult) == Success)
+		{
+			ulong[] data = cardResult[0 .. numItems];
+			size_t start = findBestIcon!targetIconSize(data);
+			ulong width = data[start];
+			ulong height = data[start + 1];
+			auto stride = formatStrideForWidth(Format.CAIRO_FORMAT_ARGB32, targetIconSize);
+			ulong offset = start + 2;
+			ulong[] scaled = scaleImage(targetIconSize, targetIconSize,
+				data[offset .. offset + width * height], cast(int) width, cast(int) height);
+			info.pixels = new ubyte[stride * targetIconSize];
+			for (int i = 0; i < targetIconSize * targetIconSize; i++)
+			{
+				ulong color = scaled[i];
+				info.pixels[i * 4 + 0] = (color >> 0) & 0xFF;
+				info.pixels[i * 4 + 1] = (color >> 8) & 0xFF;
+				info.pixels[i * 4 + 2] = (color >> 16) & 0xFF;
+				info.pixels[i * 4 + 3] = (color >> 24) & 0xFF;
+			}
+			info.icon = new ImageSurface(info.pixels, Format.CAIRO_FORMAT_ARGB32,
+				targetIconSize, targetIconSize, stride);
+		}
+	}
+
+	cache[app] = info;
+	return info;
+}
 
 AppInfo[] getOpenApps(XBackend backend)
 {
@@ -43,7 +100,6 @@ AppInfo[] getOpenApps(XBackend backend)
 	ulong numItems, bytesAfter;
 	Window* result;
 	Atom* atomsResult;
-	ulong* cardResult;
 
 	scope (exit)
 		XFree(result);
@@ -79,15 +135,7 @@ AppInfo[] getOpenApps(XBackend backend)
 				&actualType, &actualFormat, &numItems, &bytesAfter,
 				cast(ubyte**)&atomsResult) == Success)
 		{
-			XGetTextProperty(backend.display, app, &prop, XAtom[AtomName._NET_WM_NAME]);
-			AppInfo info;
-			if ((app in cache)!is null)
-				info = cache[app];
-			info.window = app;
-			info.title = cast(string) prop.value[0 .. prop.nitems].dup;
-			info.state = AppState.visible;
-			if (focused == app)
-				info.state = AppState.focused;
+			auto info = fetchWindowInfo(backend, app);
 			Atom[] atoms = atomsResult[0 .. numItems];
 			foreach (atom; atoms)
 			{
@@ -103,47 +151,8 @@ AppInfo[] getOpenApps(XBackend backend)
 				if (atom == XAtom[AtomName._NET_WM_STATE_DEMANDS_ATTENTION])
 					info.state = AppState.urgent;
 			}
-
-			XWMHints* hints = XGetWMHints(backend.display, app);
-			if (hints)
-			{
-				scope (exit)
-					XFree(hints);
-				if (hints.flags & XUrgencyHint)
-					info.state = AppState.urgent;
-			}
-
-			if ((app in cache) is null)
-			{
-				if (XGetWindowProperty(backend.display, app,
-						XAtom[AtomName._NET_WM_ICON], 0, uint.max, false,
-						XA_CARDINAL, &actualType, &actualFormat, &numItems,
-						&bytesAfter, cast(ubyte**)&cardResult) == Success)
-				{
-					ulong[] data = cardResult[0 .. numItems];
-					size_t start = findBestIcon(data);
-					ulong width = data[start];
-					ulong height = data[start + 1];
-					auto stride = formatStrideForWidth(Format.CAIRO_FORMAT_ARGB32,
-						appIconSize);
-					ulong offset = start + 2;
-					ulong[] scaled = scaleImage(appIconSize, appIconSize,
-						data[offset .. offset + width * height], cast(int) width, cast(int) height);
-					info.pixels = new ubyte[stride * appIconSize];
-					for (int i = 0; i < appIconSize * appIconSize; i++)
-					{
-						ulong color = scaled[i];
-						info.pixels[i * 4 + 0] = (color >> 0) & 0xFF;
-						info.pixels[i * 4 + 1] = (color >> 8) & 0xFF;
-						info.pixels[i * 4 + 2] = (color >> 16) & 0xFF;
-						info.pixels[i * 4 + 3] = (color >> 24) & 0xFF;
-					}
-					info.icon = new ImageSurface(info.pixels,
-						Format.CAIRO_FORMAT_ARGB32, appIconSize, appIconSize, stride);
-				}
-			}
-
-			cache[app] = info;
+			if (focused == app)
+				info.state = AppState.focused;
 			infos ~= info;
 		}
 	}
@@ -151,13 +160,13 @@ AppInfo[] getOpenApps(XBackend backend)
 	return infos;
 }
 
-size_t findBestIcon(ulong[] data)
+size_t findBestIcon(alias targetIconSize = appIconSize)(ulong[] data)
 {
 	import std.math;
 
 	size_t currentBest = 0;
 	ulong currentArea = data[0] * data[1];
-	enum targetArea = (appIconSize * 2) * (appIconSize * 2);
+	enum targetArea = (targetIconSize * 2) * (targetIconSize * 2);
 	size_t cursor = 2 + currentArea;
 	while (cursor < data.length)
 	{
