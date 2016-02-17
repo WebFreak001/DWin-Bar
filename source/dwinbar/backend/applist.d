@@ -100,6 +100,7 @@ AppInfo[] getOpenApps(XBackend backend)
 	ulong numItems, bytesAfter;
 	Window* result;
 	Atom* atomsResult;
+	ulong* cardResult;
 
 	scope (exit)
 		XFree(result);
@@ -151,8 +152,50 @@ AppInfo[] getOpenApps(XBackend backend)
 				if (atom == XAtom[AtomName._NET_WM_STATE_DEMANDS_ATTENTION])
 					info.state = AppState.urgent;
 			}
+
 			if (focused == app)
 				info.state = AppState.focused;
+
+			XWMHints* hints = XGetWMHints(backend.display, app);
+			if (hints)
+			{
+				scope (exit)
+					XFree(hints);
+				if (hints.flags & XUrgencyHint)
+					info.state = AppState.urgent;
+			}
+
+			if ((app in cache) is null)
+			{
+				if (XGetWindowProperty(backend.display, app,
+						XAtom[AtomName._NET_WM_ICON], 0, uint.max, false,
+						XA_CARDINAL, &actualType, &actualFormat, &numItems,
+						&bytesAfter, cast(ubyte**)&cardResult) == Success && numItems > 2)
+				{
+					ulong[] data = cardResult[0 .. numItems];
+					size_t start = findBestIcon(data);
+					ulong width = data[start];
+					ulong height = data[start + 1];
+					auto stride = formatStrideForWidth(Format.CAIRO_FORMAT_ARGB32,
+						appIconSize);
+					ulong offset = start + 2;
+					ulong[] scaled = scaleImage(appIconSize, appIconSize,
+						data[offset .. offset + width * height], cast(int) width, cast(int) height);
+					info.pixels = new ubyte[stride * appIconSize];
+					for (int i = 0; i < appIconSize * appIconSize; i++)
+					{
+						ulong color = scaled[i];
+						info.pixels[i * 4 + 0] = (color >> 0) & 0xFF;
+						info.pixels[i * 4 + 1] = (color >> 8) & 0xFF;
+						info.pixels[i * 4 + 2] = (color >> 16) & 0xFF;
+						info.pixels[i * 4 + 3] = (color >> 24) & 0xFF;
+					}
+					info.icon = new ImageSurface(info.pixels,
+						Format.CAIRO_FORMAT_ARGB32, appIconSize, appIconSize, stride);
+				}
+			}
+
+			cache[app] = info;
 			infos ~= info;
 		}
 	}
@@ -163,6 +206,9 @@ AppInfo[] getOpenApps(XBackend backend)
 size_t findBestIcon(alias targetIconSize = appIconSize)(ulong[] data)
 {
 	import std.math;
+
+	if (data.length < 3)
+		return 0;
 
 	size_t currentBest = 0;
 	ulong currentArea = data[0] * data[1];
