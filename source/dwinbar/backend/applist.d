@@ -118,7 +118,7 @@ AppInfo[] getOpenApps(XBackend backend)
 				if (XGetWindowProperty(backend.display, app,
 						XAtom[AtomName._NET_WM_ICON], 0, uint.max, false,
 						XA_CARDINAL, &actualType, &actualFormat, &numItems,
-						&bytesAfter, cast(ubyte**)&cardResult) == Success)
+						&bytesAfter, cast(ubyte**)&cardResult) == Success && numItems > 2)
 				{
 					ulong[] data = cardResult[0 .. numItems];
 					size_t start = findBestIcon(data);
