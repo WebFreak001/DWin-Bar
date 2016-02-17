@@ -65,7 +65,7 @@ AppInfo fetchWindowInfo(alias targetIconSize = appIconSize)(XBackend backend, Wi
 		if (XGetWindowProperty(backend.display, app,
 				XAtom[AtomName._NET_WM_ICON], 0, uint.max, false, XA_CARDINAL,
 				&actualType, &actualFormat, &numItems, &bytesAfter,
-				cast(ubyte**)&cardResult) == Success)
+				cast(ubyte**)&cardResult) == Success && numItems > 2)
 		{
 			ulong[] data = cardResult[0 .. numItems];
 			size_t start = findBestIcon!targetIconSize(data);
