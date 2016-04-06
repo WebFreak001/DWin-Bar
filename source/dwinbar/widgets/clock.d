@@ -16,10 +16,10 @@ class ClockWidget : Widget
 		_font = font;
 		_secFont = secFont;
 		info = panelInfo;
-		
+
 		icon = ImageSurface.fromPng("res/icon/clock.png");
 	}
-	
+
 	int priority() @property
 	{
 		return -1;
@@ -29,7 +29,7 @@ class ClockWidget : Widget
 	{
 		return info.isHorizontal ? 100 : 16;
 	}
-	
+
 	bool hasHover() @property
 	{
 		return true;
@@ -39,7 +39,7 @@ class ClockWidget : Widget
 	{
 		// TODO: Open clock & time details
 	}
-	
+
 	void updateLazy()
 	{
 	}
@@ -64,11 +64,12 @@ class ClockWidget : Widget
 			x = barMargin + rhsPadding + ext.x_bearing;
 			y = start;
 		}
-		context.moveTo(x + ext.x_bearing, y + 24 + ext.y_bearing);
+		context.moveTo(x + ext.x_bearing, barMargin + 16 - (ext.height / 2 + ext.y_bearing));
 		context.showText(clockMajor);
 		context.selectFontFace(_secFont, FontSlant.CAIRO_FONT_SLANT_NORMAL,
 			FontWeight.CAIRO_FONT_WEIGHT_NORMAL);
-		context.moveTo(x + ext.x_bearing + ext.width, y + 24 + ext.y_bearing);
+		context.moveTo(x + ext.x_bearing + ext.width, barMargin + 16 - (
+			ext.height / 2 + ext.y_bearing));
 		context.showText(clockMinor);
 		context.setSourceSurface(icon, x + 100 - 24 - 8, y);
 		context.paint();
