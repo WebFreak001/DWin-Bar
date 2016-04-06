@@ -10,6 +10,7 @@ import cairo.cairo;
 import std.datetime;
 import std.format;
 import std.conv;
+import std.math;
 
 class TrayWidget : Widget
 {
@@ -27,7 +28,9 @@ class TrayWidget : Widget
 
 	double length() @property
 	{
-		return info.isHorizontal ? 100 : 16;
+		return info.isHorizontal ? (
+			cast(int) SysTray.instance.icons.length * (
+			trayIconSize + trayHorizontalMargin) - trayHorizontalMargin) : 16;
 	}
 
 	bool hasHover() @property
@@ -45,18 +48,21 @@ class TrayWidget : Widget
 
 	void draw(Context context, double start)
 	{
-		foreach (icon; SysTray.instance.icons)
+		int cur = cast(int) round(start);
+		if (cur != prevStart || SysTray.instance.icons.length != oldLength)
 		{
-			context.translate(start, appMargin);
-			if (icon.icon && icon.icon.nativePointer)
-				context.setSourceSurface(icon.icon, 0, 0);
-			context.rectangle(0, 0, 16, 16);
-			context.fill();
-			context.identityMatrix();
+			oldLength = SysTray.instance.icons.length;
+			prevStart = cur;
+			foreach (i, TrayIcon icon; SysTray.instance.icons)
+			{
+				icon.moveTo(cur + cast(int) i * (trayIconSize + trayHorizontalMargin), trayVerticalMargin);
+			}
 		}
 	}
 
 private:
+	size_t oldLength;
+	int prevStart = 0;
 	string _font, _secFont;
 	PanelInfo info;
 }

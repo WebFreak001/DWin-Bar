@@ -8,6 +8,10 @@ enum rhsOffset = 16;
 enum appMargin = 20;
 enum appIconSize = 32;
 
+enum trayIconSize = 24;
+enum trayVerticalMargin = 8;
+enum trayHorizontalMargin = 4;
+
 interface Widget
 {
 	double length() @property;

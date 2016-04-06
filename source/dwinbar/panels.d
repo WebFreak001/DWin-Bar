@@ -20,8 +20,13 @@ class Panels
 
 	void start()
 	{
-		if (enableTaskBar)
-			SysTray.instance.start(_backend);
+		bool enableTaskBar = false;
+
+		if (_trayHolder !is null)
+		{
+			SysTray.instance.start(_backend, _trayHolder);
+			enableTaskBar = true;
+		}
 
 		foreach (panel; _panels)
 			foreach (widget; _widgets)
@@ -43,7 +48,7 @@ class Panels
 					if (e.xclient.message_type == XAtom[AtomName.WM_PROTOCOLS]
 							&& cast(Atom) e.xclient.data.l[0] == XAtom[AtomName.WM_DELETE_WINDOW])
 						running = false;
-					if (_enableTaskBar
+					if (enableTaskBar
 							&& e.xclient.message_type == XAtom[AtomName._NET_SYSTEM_TRAY_OPCODE]
 							&& e.xclient.window == SysTray.instance.handle)
 					{
@@ -75,21 +80,21 @@ class Panels
 		_widgets ~= widgets;
 	}
 
-	auto enableTaskBar() @property
+	auto taskBar() @property
 	{
-		return _enableTaskBar;
+		return _trayHolder;
 	}
 
-	auto enableTaskBar(bool value) @property
+	void taskBar(Panel value) @property
 	{
 		if (running)
 			throw new Exception("Can't enable task bar while bar is running");
-		_enableTaskBar = value;
+		_trayHolder = value;
 	}
 
 private:
 	bool running = false;
-	bool _enableTaskBar = false;
+	Panel _trayHolder = null;
 	XBackend _backend;
 	Panel[] _panels;
 	Widget[] _widgets;
