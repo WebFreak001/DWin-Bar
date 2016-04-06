@@ -87,6 +87,10 @@ AppInfo fetchWindowInfo(alias targetIconSize = appIconSize)(XBackend backend, Wi
 			info.icon = new ImageSurface(info.pixels, Format.CAIRO_FORMAT_ARGB32,
 				targetIconSize, targetIconSize, stride);
 		}
+		else
+			info.icon = new ImageSurface([0, 0, 0, 0],
+				Format.CAIRO_FORMAT_ARGB32, 1, 1,
+				formatStrideForWidth(Format.CAIRO_FORMAT_ARGB32, 1));
 	}
 
 	cache[app] = info;
@@ -193,6 +197,10 @@ AppInfo[] getOpenApps(XBackend backend)
 					info.icon = new ImageSurface(info.pixels,
 						Format.CAIRO_FORMAT_ARGB32, appIconSize, appIconSize, stride);
 				}
+				else
+					info.icon = new ImageSurface([0, 0, 0, 0],
+						Format.CAIRO_FORMAT_ARGB32, 1, 1,
+						formatStrideForWidth(Format.CAIRO_FORMAT_ARGB32, 1));
 			}
 
 			cache[app] = info;
