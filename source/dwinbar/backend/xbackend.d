@@ -197,6 +197,11 @@ class XBackend
 		return _screens;
 	}
 
+	Window root() @property
+	{
+		return _root;
+	}
+
 	void changeFocus(Window window)
 	{
 		XChangeProperty(_display, _root, XAtom[AtomName._NET_ACTIVE_WINDOW],
