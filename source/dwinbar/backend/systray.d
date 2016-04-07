@@ -132,7 +132,6 @@ class SysTray
 		{
 		case RequestDock:
 			dock(event.data.l[2]);
-			//_apps ~= fetchWindowInfo!16(x, window);
 			break;
 		default:
 			break;
@@ -149,6 +148,23 @@ class SysTray
 		return _icons;
 	}
 
+	bool handleRemove(Window window)
+	{
+		import std.algorithm : remove;
+
+		foreach_reverse (i, icon; _icons)
+		{
+			if (icon.ownerHandle == window)
+			{
+				XUnmapWindow(x.display, icon.trayWindow);
+				XDestroyWindow(x.display, icon.trayWindow);
+				_icons = _icons.remove(i);
+				return true;
+			}
+		}
+		return false;
+	}
+
 private:
 	bool dock(Window window)
 	{
@@ -156,22 +172,6 @@ private:
 		error = false;
 		XErrorHandler old = XSetErrorHandler(cast(XErrorHandler)(&trayErrorHandler));
 		XSync(x.display, false);
-
-		ushort pid = 0;
-		{
-			Atom actual_type;
-			int actual_format;
-			ulong nitems;
-			ulong bytes_after;
-			ubyte* prop = null;
-			int ret = XGetWindowProperty(x.display, window,
-				XAtom[AtomName._NET_WM_PID], 0, 1024, False, AnyPropertyType,
-				&actual_type, &actual_format, &nitems, &bytes_after, &prop);
-			if (ret == 0 && prop)
-			{
-				pid = (prop[1] << 8) | prop[0];
-			}
-		}
 
 		XWindowAttributes attr;
 		if (XGetWindowAttributes(x.display, window, &attr) == 0)
@@ -203,6 +203,7 @@ private:
 			return false;
 		}
 
+		XSelectInput(x.display, window, StructureNotifyMask);
 		XWithdrawWindow(x.display, window, x.screen);
 		XReparentWindow(x.display, window, icon.trayWindow, 0, 0);
 		XMoveResizeWindow(x.display, window, 0, 0, trayIconSize, trayIconSize);

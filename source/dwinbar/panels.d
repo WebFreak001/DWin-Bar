@@ -45,15 +45,48 @@ class Panels
 				XNextEvent(_backend.display, &e);
 				if (e.type == ClientMessage)
 				{
-					if (e.xclient.message_type == XAtom[AtomName.WM_PROTOCOLS]
-							&& cast(Atom) e.xclient.data.l[0] == XAtom[AtomName.WM_DELETE_WINDOW])
-						running = false;
+					if (e.xclient.message_type == XAtom[AtomName.WM_PROTOCOLS])
+					{
+						const atom = cast(Atom) e.xclient.data.l[0];
+						if (atom == XAtom[AtomName.WM_DELETE_WINDOW])
+							running = false;
+						else
+							std.stdio.writeln("Unhandled WM_PROTOCOLS Atom: ", atom);
+					}
 					if (enableTaskBar
 							&& e.xclient.message_type == XAtom[AtomName._NET_SYSTEM_TRAY_OPCODE]
 							&& e.xclient.window == SysTray.instance.handle)
 					{
 						SysTray.instance.handleEvent(e.xclient);
 					}
+				}
+				else if (e.type == Expose)
+				{ /* Ignore */ }
+				else if (e.type == DestroyNotify)
+				{
+					if (enableTaskBar)
+					{
+						SysTray.instance.handleRemove(e.xdestroywindow.window);
+					}
+					else
+					{
+						std.stdio.writeln(e.xdestroywindow.window, " got destroyed randomly!");
+					}
+				}
+				else if (e.type == UnmapNotify)
+				{
+					if (enableTaskBar)
+					{
+						SysTray.instance.handleRemove(e.xunmap.window);
+					}
+					else
+					{
+						std.stdio.writeln(e.xunmap.window, " got unmapped randomly!");
+					}
+				}
+				else
+				{
+					debug std.stdio.writeln("Unhandled event: ", e.type);
 				}
 
 				foreach (panel; _panels)
