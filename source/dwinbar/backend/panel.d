@@ -18,6 +18,7 @@ import dwinbar.backend.applist;
 
 import std.datetime;
 import std.conv;
+import std.math;
 import core.thread;
 
 static assert(CAIRO_HAS_XLIB_SURFACE);
@@ -226,6 +227,12 @@ class Panel
 
 	void paint()
 	{
+		frameTimer.stop();
+		float delta = frameTimer.peek.to!("seconds", float);
+		frameTimer.reset();
+		frameTimer.start();
+
+		urgentTimer += delta;
 		// every 0.2s
 		if (_time + 2000000 < Clock.currStdTime)
 		{
@@ -308,7 +315,7 @@ class Panel
 			switch (app.state)
 			{
 			case AppState.urgent:
-				context.setSourceRGBA(1, 0, 1, 1);
+				context.setSourceRGBA(1, 1, 1, sin(urgentTimer * 4) * 0.3 + 0.5);
 				break;
 			case AppState.focused:
 				context.setSourceRGBA(1, 1, 1, 0.95);
@@ -326,25 +333,36 @@ class Panel
 			else
 				context.roundedRectangle(barMargin, pos, appIconSize, 3, 1.5);
 			context.fill();
+			bool hover = false;
 			if (_hasHoverFocus)
 			{
-				bool hover = false;
 				if (_info.isHorizontal)
 					hover = mouseX > pos - 8 && mouseX < pos + appIconSize + 8;
 				else
 					hover = mouseY > pos && mouseY < pos + appIconSize;
+			}
 
-				if (hover)
-				{
-					context.setOperator(Operator.CAIRO_OPERATOR_ATOP);
-					if (_info.isHorizontal)
-						context.rectangle(pos, barMargin - 2, appIconSize, appIconSize);
-					else
-						context.rectangle(barMargin, pos, appIconSize, appIconSize);
-					context.setSourceRGBA(1, 1, 1, 0.15);
-					context.fill();
-					context.setOperator(Operator.CAIRO_OPERATOR_OVER);
-				}
+			if (hover)
+			{
+				context.setOperator(Operator.CAIRO_OPERATOR_ATOP);
+				if (_info.isHorizontal)
+					context.rectangle(pos, barMargin - 2, appIconSize, appIconSize);
+				else
+					context.rectangle(barMargin, pos, appIconSize, appIconSize);
+				context.setSourceRGBA(1, 1, 1, 0.15);
+				context.fill();
+				context.setOperator(Operator.CAIRO_OPERATOR_OVER);
+			}
+			else if(app.state == AppState.urgent)
+			{
+				context.setOperator(Operator.CAIRO_OPERATOR_ATOP);
+				if (_info.isHorizontal)
+					context.rectangle(pos, barMargin - 2, appIconSize, appIconSize);
+				else
+					context.rectangle(barMargin, pos, appIconSize, appIconSize);
+				context.setSourceRGBA(0.2, 0.5, 1, sin(urgentTimer * 8) * 0.35 + 0.35);
+				context.fill();
+				context.setOperator(Operator.CAIRO_OPERATOR_OVER);
 			}
 			pos += appMargin + appIconSize;
 		}
@@ -407,7 +425,8 @@ private:
 
 		XSelectInput(_dpy, _window,
 			ExposureMask | EnterWindowMask | LeaveWindowMask | ButtonPressMask | ButtonReleaseMask | KeyPressMask | PointerMotionMask);
-		XSetWMProtocols(_dpy, _window, [XAtom[AtomName.WM_DELETE_WINDOW], XAtom[AtomName._NET_WM_PING]].ptr, 2);
+		XSetWMProtocols(_dpy, _window, [XAtom[AtomName.WM_DELETE_WINDOW],
+			XAtom[AtomName._NET_WM_PING]].ptr, 2);
 
 		setupStrut();
 	}
@@ -454,6 +473,8 @@ private:
 	PanelInfo _info;
 	Widget[] _widgets;
 	AppInfo[] _apps;
+	StopWatch frameTimer;
+	float urgentTimer = 0;
 	bool _hasHoverFocus = false;
 	bool isDrag = false;
 	bool buttonDown = false;
