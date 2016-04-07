@@ -50,6 +50,12 @@ class Panels
 						const atom = cast(Atom) e.xclient.data.l[0];
 						if (atom == XAtom[AtomName.WM_DELETE_WINDOW])
 							running = false;
+						else if (atom == XAtom[AtomName._NET_WM_PING])
+						{
+							XSendEvent(_backend.display, _backend.root, false,
+								SubstructureNotifyMask | SubstructureRedirectMask,
+								&e);
+						}
 						else
 							std.stdio.writeln("Unhandled WM_PROTOCOLS Atom: ", atom);
 					}

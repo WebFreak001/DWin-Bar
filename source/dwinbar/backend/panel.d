@@ -407,7 +407,7 @@ private:
 
 		XSelectInput(_dpy, _window,
 			ExposureMask | EnterWindowMask | LeaveWindowMask | ButtonPressMask | ButtonReleaseMask | KeyPressMask | PointerMotionMask);
-		XSetWMProtocols(_dpy, _window, &XAtom[AtomName.WM_DELETE_WINDOW], 1);
+		XSetWMProtocols(_dpy, _window, [XAtom[AtomName.WM_DELETE_WINDOW], XAtom[AtomName._NET_WM_PING]].ptr, 2);
 
 		setupStrut();
 	}

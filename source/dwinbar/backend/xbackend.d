@@ -100,6 +100,7 @@ enum AtomName : string
 	_XEMBED = "_XEMBED",
 	_XEMBED_INFO = "_XEMBED_INFO",
 	_NET_WM_PID = "_NET_WM_PID",
+	_NET_WM_PING = "_NET_WM_PING",
 	XdndAware = "XdndAware",
 	XdndEnter = "XdndEnter",
 	XdndPosition = "XdndPosition",
