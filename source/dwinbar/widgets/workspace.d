@@ -35,7 +35,7 @@ class WorkspaceWidget : Widget
 
 	double length() @property
 	{
-		return info.isHorizontal ? (desktops.length * 32 - 4) : 16;
+		return info.isHorizontal ? desktops.length * 32 : 16;
 	}
 
 	void click(double len)

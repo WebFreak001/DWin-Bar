@@ -3,7 +3,7 @@ module dwinbar.widgets.widget;
 import cairo.cairo;
 
 enum barMargin = 4;
-enum rhsPadding = 8;
+enum rhsPadding = 4;
 enum rhsOffset = 16;
 enum appMargin = 20;
 enum appIconSize = 32;

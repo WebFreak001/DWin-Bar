@@ -56,12 +56,12 @@ class ClockWidget : Widget
 		double x, y;
 		if (info.isHorizontal)
 		{
-			x = start + rhsPadding + ext.x_bearing;
-			y = barMargin + rhsPadding;
+			x = start + 8 + ext.x_bearing;
+			y = barMargin + 8;
 		}
 		else
 		{
-			x = barMargin + rhsPadding + ext.x_bearing;
+			x = barMargin + 8 + ext.x_bearing;
 			y = start;
 		}
 		context.moveTo(x + ext.x_bearing, barMargin + 16 - (ext.height / 2 + ext.y_bearing));
