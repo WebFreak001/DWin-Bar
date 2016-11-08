@@ -3,7 +3,7 @@ module dwinbar.backend.icongen;
 import dwinbar.widgets.widget;
 
 ulong[] scaleImage(int targetWidth, int targetHeight, in ulong[] source,
-	int sourceWidth, int sourceHeight)
+		int sourceWidth, int sourceHeight)
 {
 	if (targetWidth == sourceWidth && targetHeight == sourceHeight)
 		return source.dup;
@@ -13,20 +13,76 @@ ulong[] scaleImage(int targetWidth, int targetHeight, in ulong[] source,
 	float scaleX = sourceWidth / cast(float) targetWidth;
 	float scaleY = sourceHeight / cast(float) targetHeight;
 
-	for (int y = 0; y < targetHeight; y++)
+	if (targetWidth < sourceWidth && targetHeight < sourceHeight)
 	{
-		for (int x = 0; x < targetWidth; x++)
+		float remX = scaleX % 1;
+		float remY = scaleY % 1;
+
+		int scaleXi = cast(int) scaleX;
+		int scaleYi = cast(int) scaleY;
+
+		float overflowX = 0;
+		float overflowY = 0;
+
+		for (int y = 0; y < targetHeight; y++)
 		{
-			image[x + y * targetWidth] = interpolate2D(x * scaleX, y * scaleY,
-				source, sourceWidth, sourceHeight);
+			overflowY += remY;
+			int countY = scaleYi;
+			if (overflowY >= 1)
+			{
+				countY++;
+				overflowY--;
+			}
+
+			overflowX = 0;
+			for (int x = 0; x < targetWidth; x++)
+			{
+				overflowX += remX;
+				int countX = scaleXi;
+				if (overflowX >= 1)
+				{
+					countX++;
+					overflowX--;
+				}
+				uint[4] sum;
+				for (int oy = 0; oy < countY; oy++)
+				{
+					for (int ox = 0; ox < countX; ox++)
+					{
+						ulong px = source.get(sourceWidth, sourceHeight,
+								cast(int)(x * scaleX + ox), cast(int)(y * scaleY + oy));
+						sum[0] += px & 0xFF;
+						sum[1] += (px >> 8) & 0xFF;
+						sum[2] += (px >> 16) & 0xFF;
+						sum[3] += (px >> 24) & 0xFF;
+					}
+				}
+				immutable sumCount = countX * countY;
+				ubyte alpha = (sum[3] / sumCount) & 0xFF;
+				sum[0] = ((sum[0] / sumCount) & 0xFF) * alpha / 256;
+				sum[1] = ((sum[1] / sumCount) & 0xFF) * alpha / 256;
+				sum[2] = ((sum[2] / sumCount) & 0xFF) * alpha / 256;
+				ulong result = sum[0] | (sum[1] << 8) | (sum[2] << 16) | (alpha << 24);
+				image[x + y * targetWidth] = result;
+			}
 		}
 	}
-
+	else
+	{
+		for (int y = 0; y < targetHeight; y++)
+		{
+			for (int x = 0; x < targetWidth; x++)
+			{
+				image[x + y * targetWidth] = interpolate2D(x * scaleX, y * scaleY,
+						source, sourceWidth, sourceHeight);
+			}
+		}
+	}
 	return image;
 }
 
 ulong interpolate2D(float targetX, float targetY, in ulong[] source,
-	int sourceWidth, int sourceHeight)
+		int sourceWidth, int sourceHeight)
 {
 	import std.math;
 
@@ -63,9 +119,12 @@ ulong lerp(ulong a, ulong b, float amount)
 	float iAmount = 1 - amount;
 	ubyte aa = (a >> 24) & 0xFF;
 	ubyte ba = (b >> 24) & 0xFF;
-	ubyte c1 = cast(ubyte)((((a >> 0) & 0xFF) * aa / 256) * iAmount + (((b >> 0) & 0xFF) * ba / 256) * amount);
-	ubyte c2 = cast(ubyte)((((a >> 8) & 0xFF) * aa / 256) * iAmount + (((b >> 8) & 0xFF) * ba / 256) * amount);
-	ubyte c3 = cast(ubyte)((((a >> 16) & 0xFF) * aa / 256) * iAmount + (((b >> 16) & 0xFF) * ba / 256) * amount);
+	ubyte c1 = cast(ubyte)((((a >> 0) & 0xFF) * aa / 256) * iAmount + (
+			((b >> 0) & 0xFF) * ba / 256) * amount);
+	ubyte c2 = cast(ubyte)((((a >> 8) & 0xFF) * aa / 256) * iAmount + (
+			((b >> 8) & 0xFF) * ba / 256) * amount);
+	ubyte c3 = cast(ubyte)((((a >> 16) & 0xFF) * aa / 256) * iAmount + (
+			((b >> 16) & 0xFF) * ba / 256) * amount);
 	ubyte c4 = cast(ubyte)(aa * iAmount + ba * amount);
 	return (c1 << 0) | (c2 << 8) | (c3 << 16) | (c4 << 24);
 }
