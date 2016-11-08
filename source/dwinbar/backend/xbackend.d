@@ -4,6 +4,8 @@ import std.string;
 import std.traits;
 import std.conv;
 
+static import std.stdio;
+
 import core.thread;
 
 import x11.Xutil;

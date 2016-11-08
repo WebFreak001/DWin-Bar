@@ -11,6 +11,8 @@ import dwinbar.widgets.widget;
 
 import core.thread;
 
+static import std.stdio;
+
 class Panels
 {
 	this(XBackend backend)
