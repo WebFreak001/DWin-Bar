@@ -39,6 +39,7 @@ extern (C) int errorHandler(Display* display, XErrorEvent* event)
 	throw new Exception("");
 }
 
+//dfmt off
 enum AtomName : string
 {
 	WM_DELETE_WINDOW = "WM_DELETE_WINDOW",
@@ -115,6 +116,7 @@ enum AtomName : string
 	XdndFinished = "XdndFinished",
 	TARGETS = "TARGETS",
 }
+//dfmt on
 
 enum SpecialAtom
 {
@@ -157,7 +159,7 @@ class XBackend
 
 		_atoms = new Atom[SpecialAtom.max + 1];
 		_atoms[SpecialAtom.SystemTray] = XInternAtom(_display,
-			("_NET_SYSTEM_TRAY_S" ~ _screen.to!string).toStringz, false);
+				("_NET_SYSTEM_TRAY_S" ~ _screen.to!string).toStringz, false);
 
 		foreach (i, atom; _atoms)
 			assert(atom, "No such special atom: " ~ (cast(SpecialAtom) i).to!string);
@@ -208,7 +210,7 @@ class XBackend
 	void changeFocus(Window window)
 	{
 		XChangeProperty(_display, _root, XAtom[AtomName._NET_ACTIVE_WINDOW],
-			XA_WINDOW, 32, PropModeReplace, cast(ubyte*)&window, 1);
+				XA_WINDOW, 32, PropModeReplace, cast(ubyte*)&window, 1);
 		XSetInputFocus(_display, window, RevertToNone, CurrentTime);
 		XRaiseWindow(_display, window);
 	}
@@ -219,17 +221,21 @@ class XBackend
 		int format;
 		ulong number, bytesAfter;
 		uint* cardinal;
-		assert(XGetWindowProperty(_display, _root,
-			XAtom[AtomName._NET_CURRENT_DESKTOP], 0, 1, false, XA_CARDINAL,
-			&returnType, &format, &number, &bytesAfter, cast(ubyte**)&cardinal) == Success);
+		if (XGetWindowProperty(_display, _root, XAtom[AtomName._NET_CURRENT_DESKTOP],
+				0, 1, false, XA_CARDINAL, &returnType, &format, &number,
+				&bytesAfter, cast(ubyte**)&cardinal) != Success)
+		{
+			std.stdio.stderr.writeln("Failed to get workspace!");
+			return 0;
+		}
 		return cardinal[0];
 	}
 
 	void currentWorkspace(uint value) @property
 	{
-		assert(XChangeProperty(_display, _root,
-			XAtom[AtomName._NET_CURRENT_DESKTOP], XA_CARDINAL, 32,
-			PropModeReplace, cast(ubyte*)&value, 1) == Success);
+		if (XChangeProperty(_display, _root, XAtom[AtomName._NET_CURRENT_DESKTOP],
+				XA_CARDINAL, 32, PropModeReplace, cast(ubyte*)&value, 1) != Success)
+			std.stdio.stderr.writeln("Couldn't change workspace!");
 	}
 
 	uint numWorkspaces() @property
@@ -238,9 +244,13 @@ class XBackend
 		int format;
 		ulong number, bytesAfter;
 		uint* cardinal;
-		assert(XGetWindowProperty(_display, _root,
-			XAtom[AtomName._NET_NUMBER_OF_DESKTOPS], 0, 1, false, XA_CARDINAL,
-			&returnType, &format, &number, &bytesAfter, cast(ubyte**)&cardinal) == Success);
+		if (XGetWindowProperty(_display, _root, XAtom[AtomName._NET_NUMBER_OF_DESKTOPS],
+				0, 1, false, XA_CARDINAL, &returnType, &format, &number,
+				&bytesAfter, cast(ubyte**)&cardinal) != Success)
+		{
+			std.stdio.stderr.writeln("Failed to get workspace count!");
+			return 1;
+		}
 		return cardinal[0];
 	}
 
@@ -251,9 +261,8 @@ class XBackend
 		ulong number, bytesAfter;
 		ubyte* strs;
 
-		if (XGetWindowProperty(_display, _root,
-				XAtom[AtomName._NET_DESKTOP_NAMES], 0, 64, false,
-				AnyPropertyType, &returnType, &format, &number,
+		if (XGetWindowProperty(_display, _root, XAtom[AtomName._NET_DESKTOP_NAMES],
+				0, 64, false, AnyPropertyType, &returnType, &format, &number,
 				&bytesAfter, cast(ubyte**)&strs) == 0 && format == 8)
 		{
 			names = (cast(string) strs[0 .. number].idup).split('\0')[0 .. $ - 1];
@@ -297,8 +306,7 @@ private:
 		uint d1, screenWidth, screenHeight;
 		Window d2;
 		int d3;
-		XGetGeometry(_display, _root, &d2, &d3, &d3, &screenWidth, &screenHeight, &d1,
-			&d1);
+		XGetGeometry(_display, _root, &d2, &d3, &d3, &screenWidth, &screenHeight, &d1, &d1);
 
 		_screens ~= ScreenInfo(0, 0, cast(short) screenWidth, cast(short) screenHeight);
 	}
