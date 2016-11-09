@@ -38,7 +38,7 @@ class TrayWidget : Widget
 		return true;
 	}
 
-	void click(double len)
+	void click(Panel panel, double len, int panelX, int panelY)
 	{
 	}
 
@@ -46,7 +46,7 @@ class TrayWidget : Widget
 	{
 	}
 
-	void draw(Context context, double start)
+	void draw(Panel panel, Context context, double start)
 	{
 		int cur = cast(int) round(start);
 		if (cur != prevStart || SysTray.instance.icons.length != oldLength)

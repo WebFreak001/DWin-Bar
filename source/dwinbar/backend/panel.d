@@ -53,7 +53,7 @@ struct PanelInfo
 }
 
 enum dPanelName = "dwin-bar";
-char* panelName = cast(char*)(dPanelName ~ "\0").ptr;
+char* panelName = cast(char*)(dPanelName ~ '\0').ptr;
 
 class Panel
 {
@@ -89,7 +89,7 @@ class Panel
 
 		ulong mask = CWEventMask | CWColormap | CWBackPixel | CWBorderPixel;
 		_window = XCreateWindow(_dpy, x.rootWindow, info.x, info.y, info.width,
-			info.height, 0, x.vinfo.depth, InputOutput, x.visual, mask, &attr);
+				info.height, 0, x.vinfo.depth, InputOutput, x.visual, mask, &attr);
 
 		setup();
 
@@ -188,9 +188,9 @@ class Panel
 						if (hovered)
 						{
 							if (_info.isHorizontal)
-								widget.click(mouseX - currLen);
+								widget.click(this, mouseX - currLen, mouseX, mouseY);
 							else
-								widget.click(mouseY - currLen);
+								widget.click(this, mouseY - currLen, mouseX, mouseY);
 							return;
 						}
 					}
@@ -253,11 +253,10 @@ class Panel
 
 		if (info.isHorizontal)
 			context.roundedRectangle(info.width - rhsOffset - barMargin - rhsLength,
-				barMargin, rhsLength, info.height - 2 * barMargin, 2);
+					barMargin, rhsLength, info.height - 2 * barMargin, 2);
 		else
-			context.roundedRectangle(barMargin,
-				info.height - rhsOffset - barMargin - rhsLength,
-				info.width - 2 * barMargin, info.height, 2);
+			context.roundedRectangle(barMargin, info.height - rhsOffset - barMargin - rhsLength,
+					info.width - 2 * barMargin, info.height, 2);
 		context.setSourceRGBA(0, 0, 0, 0.5);
 		context.fill();
 		context.setSourceRGB(1, 1, 1);
@@ -278,8 +277,7 @@ class Panel
 					if (mouseX > currLen && mouseX < lastLen - rhsPadding)
 					{
 						context.setSourceRGBA(1, 1, 1, 0.1);
-						context.rectangle(currLen, barMargin, widget.length,
-							info.height - 2 * barMargin);
+						context.rectangle(currLen, barMargin, widget.length, info.height - 2 * barMargin);
 						context.fill();
 						context.setSourceRGB(1, 1, 1);
 					}
@@ -289,14 +287,13 @@ class Panel
 					if (mouseY > currLen && mouseY < lastLen - rhsPadding)
 					{
 						context.setSourceRGBA(1, 1, 1, 0.1);
-						context.rectangle(barMargin, currLen,
-							info.width - 2 * barMargin, widget.length);
+						context.rectangle(barMargin, currLen, info.width - 2 * barMargin, widget.length);
 						context.fill();
 						context.setSourceRGB(1, 1, 1);
 					}
 				}
 			}
-			widget.draw(context, currLen);
+			widget.draw(this, context, currLen);
 		}
 		double pos = appMargin + barMargin;
 		foreach (app; _apps)
@@ -353,7 +350,7 @@ class Panel
 				context.fill();
 				context.setOperator(Operator.CAIRO_OPERATOR_OVER);
 			}
-			else if(app.state == AppState.urgent)
+			else if (app.state == AppState.urgent)
 			{
 				context.setOperator(Operator.CAIRO_OPERATOR_ATOP);
 				if (_info.isHorizontal)
@@ -391,42 +388,41 @@ private:
 		XSetIconName(_dpy, _window, panelName);
 
 		XChangeProperty(_dpy, _window, XAtom[AtomName._NET_WM_NAME],
-			XAtom[AtomName.UTF8_STRING], 8, PropModeReplace,
-			cast(ubyte*) panelName, dPanelName.length);
+				XAtom[AtomName.UTF8_STRING], 8, PropModeReplace,
+				cast(ubyte*) panelName, dPanelName.length);
 
 		XChangeProperty(_dpy, _window, XAtom[AtomName._NET_WM_ICON_NAME],
-			XAtom[AtomName.UTF8_STRING], 8, PropModeReplace,
-			cast(ubyte*) panelName, dPanelName.length);
+				XAtom[AtomName.UTF8_STRING], 8, PropModeReplace,
+				cast(ubyte*) panelName, dPanelName.length);
 
 		long val = cast(long) XAtom[AtomName._NET_WM_WINDOW_TYPE_DOCK];
 		XChangeProperty(_dpy, _window, XAtom[AtomName._NET_WM_WINDOW_TYPE],
-			XA_ATOM, 32, PropModeReplace, cast(ubyte*)&val, 1);
+				XA_ATOM, 32, PropModeReplace, cast(ubyte*)&val, 1);
 
 		val = 0xFFFFFFFF; // All desktops
 		XChangeProperty(_dpy, _window, XAtom[AtomName._NET_WM_DESKTOP],
-			XA_CARDINAL, 32, PropModeReplace, cast(ubyte*)&val, 1);
+				XA_CARDINAL, 32, PropModeReplace, cast(ubyte*)&val, 1);
 
 		Atom[] state;
 		state ~= XAtom[AtomName._NET_WM_STATE_STICKY];
 		state ~= XAtom[AtomName._NET_WM_STATE_SKIP_TASKBAR];
 		state ~= XAtom[AtomName._NET_WM_STATE_SKIP_PAGER];
 		state ~= XAtom[AtomName._NET_WM_STATE_ABOVE];
-		XChangeProperty(_dpy, _window, XAtom[AtomName._NET_WM_STATE], XA_ATOM,
-			32, PropModeReplace, cast(ubyte*) state.ptr, cast(int) state.length);
+		XChangeProperty(_dpy, _window, XAtom[AtomName._NET_WM_STATE], XA_ATOM, 32,
+				PropModeReplace, cast(ubyte*) state.ptr, cast(int) state.length);
 
 		int[5] undecorated = [2, 0, 0, 0, 0];
 		XChangeProperty(_dpy, _window, XAtom[AtomName._MOTIF_WM_HINTS],
-			XAtom[AtomName._MOTIF_WM_HINTS], 32, PropModeReplace, cast(ubyte*) undecorated.ptr,
-			5);
+				XAtom[AtomName._MOTIF_WM_HINTS], 32, PropModeReplace, cast(ubyte*) undecorated.ptr, 5);
 
 		Atom ver = 5;
 		XChangeProperty(_dpy, _window, XAtom[AtomName.XdndAware], XA_ATOM, 32,
-			PropModeReplace, cast(ubyte*)&ver, 1);
+				PropModeReplace, cast(ubyte*)&ver, 1);
 
-		XSelectInput(_dpy, _window,
-			ExposureMask | EnterWindowMask | LeaveWindowMask | ButtonPressMask | ButtonReleaseMask | KeyPressMask | PointerMotionMask);
+		XSelectInput(_dpy, _window, ExposureMask | EnterWindowMask | LeaveWindowMask
+				| ButtonPressMask | ButtonReleaseMask | KeyPressMask | PointerMotionMask);
 		XSetWMProtocols(_dpy, _window, [XAtom[AtomName.WM_DELETE_WINDOW],
-			XAtom[AtomName._NET_WM_PING]].ptr, 2);
+				XAtom[AtomName._NET_WM_PING]].ptr, 2);
 
 		setupStrut();
 	}
@@ -458,10 +454,10 @@ private:
 			strut[10] = _info.x;
 			strut[11] = _info.x + _info.width;
 		}
-		XChangeProperty(_dpy, _window, XAtom[AtomName._NET_WM_STRUT],
-			XA_CARDINAL, 32, PropModeReplace, cast(ubyte*) strut.ptr, 4);
+		XChangeProperty(_dpy, _window, XAtom[AtomName._NET_WM_STRUT], XA_CARDINAL,
+				32, PropModeReplace, cast(ubyte*) strut.ptr, 4);
 		XChangeProperty(_dpy, _window, XAtom[AtomName._NET_WM_STRUT_PARTIAL],
-			XA_CARDINAL, 32, PropModeReplace, cast(ubyte*) strut.ptr, 12);
+				XA_CARDINAL, 32, PropModeReplace, cast(ubyte*) strut.ptr, 12);
 	}
 
 	ulong _time;

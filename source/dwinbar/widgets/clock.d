@@ -35,7 +35,7 @@ class ClockWidget : Widget
 		return true;
 	}
 
-	void click(double len)
+	void click(Panel panel, double len, int panelX, int panelY)
 	{
 		// TODO: Open clock & time details
 	}
@@ -44,13 +44,13 @@ class ClockWidget : Widget
 	{
 	}
 
-	void draw(Context context, double start)
+	void draw(Panel panel, Context context, double start)
 	{
 		SysTime clockTime = Clock.currTime;
 		string clockMajor = format("%02d:%02d", clockTime.hour, clockTime.minute);
 		string clockMinor = format(" %02d", clockTime.second);
 		context.selectFontFace(_font, FontSlant.CAIRO_FONT_SLANT_NORMAL,
-			FontWeight.CAIRO_FONT_WEIGHT_NORMAL);
+				FontWeight.CAIRO_FONT_WEIGHT_NORMAL);
 		context.setFontSize(16);
 		TextExtents ext = context.textExtents(clockMajor);
 		double x, y;
@@ -67,9 +67,8 @@ class ClockWidget : Widget
 		context.moveTo(x + ext.x_bearing, barMargin + 16 - (ext.height / 2 + ext.y_bearing));
 		context.showText(clockMajor);
 		context.selectFontFace(_secFont, FontSlant.CAIRO_FONT_SLANT_NORMAL,
-			FontWeight.CAIRO_FONT_WEIGHT_NORMAL);
-		context.moveTo(x + ext.x_bearing + ext.width, barMargin + 16 - (
-			ext.height / 2 + ext.y_bearing));
+				FontWeight.CAIRO_FONT_WEIGHT_NORMAL);
+		context.moveTo(x + ext.x_bearing + ext.width, barMargin + 16 - (ext.height / 2 + ext.y_bearing));
 		context.showText(clockMinor);
 		context.setSourceSurface(icon, x + 100 - 24 - 8, y);
 		context.paint();

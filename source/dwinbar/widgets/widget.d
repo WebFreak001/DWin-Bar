@@ -1,5 +1,7 @@
 module dwinbar.widgets.widget;
 
+import dwinbar.backend.panel;
+
 import cairo.cairo;
 
 enum barMargin = 4;
@@ -17,7 +19,7 @@ interface Widget
 	double length() @property;
 	int priority() @property;
 	bool hasHover() @property;
-	void click(double len);
-	void draw(Context context, double start);
+	void click(Panel panel, double len, int panelX, int panelY);
+	void draw(Panel panel, Context context, double start);
 	void updateLazy();
 }

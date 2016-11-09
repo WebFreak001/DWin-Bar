@@ -38,7 +38,7 @@ class WorkspaceWidget : Widget
 		return info.isHorizontal ? desktops.length * 32 : 16;
 	}
 
-	void click(double len)
+	void click(Panel panel, double len, int panelX, int panelY)
 	{
 		int desktop = (cast(int) len) / 32;
 		if (desktop >= 0 && desktop < desktops.length)
@@ -61,7 +61,7 @@ class WorkspaceWidget : Widget
 		_currentDesktop = x.currentWorkspace;
 	}
 
-	void draw(Context context, double start)
+	void draw(Panel panel, Context context, double start)
 	{
 		context.roundedRectangle(start + _currentDesktop * 32, barMargin, 32, 32, 2);
 		context.setSourceRGBA(0, 0, 0, 0.5);

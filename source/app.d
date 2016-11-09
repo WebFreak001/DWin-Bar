@@ -2,6 +2,7 @@ import dwinbar.backend.xbackend;
 import dwinbar.backend.panel;
 
 import dwinbar.widgets.clock;
+import dwinbar.widgets.volume;
 import dwinbar.widgets.tray;
 import dwinbar.widgets.workspace;
 
@@ -23,6 +24,7 @@ void main(string[] args)
 	auto commonInfo = PanelInfo(Screen.First, int.min, int.min, 0, 40, Side.Bottom);
 
 	panels.addGlobalWidget(new WorkspaceWidget(backend, fontPrimary, fontSecondary, commonInfo));
+	panels.addGlobalWidget(new VolumeWidget(panels, fontPrimary, fontSecondary, commonInfo));
 	panels.addGlobalWidget(new ClockWidget(fontPrimary, fontSecondary, commonInfo));
 
 	commonInfo.screen = Screen.First; // 0
