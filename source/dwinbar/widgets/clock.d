@@ -20,11 +20,6 @@ class ClockWidget : Widget
 		icon = ImageSurface.fromPng("res/icon/clock.png");
 	}
 
-	int priority() @property
-	{
-		return -1;
-	}
-
 	double length() @property
 	{
 		return info.isHorizontal ? 100 : 16;

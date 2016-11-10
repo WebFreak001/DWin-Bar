@@ -21,11 +21,6 @@ class TrayWidget : Widget
 		info = panelInfo;
 	}
 
-	int priority() @property
-	{
-		return 10;
-	}
-
 	double length() @property
 	{
 		return info.isHorizontal ? (

@@ -23,11 +23,6 @@ class WorkspaceWidget : Widget
 		info = panelInfo;
 	}
 
-	int priority() @property
-	{
-		return 100;
-	}
-
 	bool hasHover() @property
 	{
 		return false;
@@ -72,14 +67,15 @@ class WorkspaceWidget : Widget
 		foreach (i, desktop; desktops)
 		{
 			if (i == _currentDesktop)
-				context.selectFontFace(_font,
-					FontSlant.CAIRO_FONT_SLANT_NORMAL, FontWeight.CAIRO_FONT_WEIGHT_NORMAL);
+				context.selectFontFace(_font, FontSlant.CAIRO_FONT_SLANT_NORMAL,
+						FontWeight.CAIRO_FONT_WEIGHT_NORMAL);
 			else
-				context.selectFontFace(_secFont,
-					FontSlant.CAIRO_FONT_SLANT_NORMAL, FontWeight.CAIRO_FONT_WEIGHT_NORMAL);
+				context.selectFontFace(_secFont, FontSlant.CAIRO_FONT_SLANT_NORMAL,
+						FontWeight.CAIRO_FONT_WEIGHT_NORMAL);
+			context.setFontSize(16);
 			ext = context.textExtents(desktop);
 			context.moveTo(start + i * 32 + 16 - (ext.width / 2 + ext.x_bearing),
-				barMargin + 16 - (ext.height / 2 + ext.y_bearing));
+					barMargin + 16 - (ext.height / 2 + ext.y_bearing));
 			context.showText(desktop);
 		}
 	}

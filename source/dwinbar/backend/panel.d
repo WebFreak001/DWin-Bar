@@ -16,6 +16,7 @@ import dwinbar.widgets.widget;
 import dwinbar.backend.xbackend;
 import dwinbar.backend.applist;
 
+import std.algorithm;
 import std.datetime;
 import std.conv;
 import std.math;
@@ -368,16 +369,24 @@ class Panel
 		context.paint();
 	}
 
+	void prependWidget(Widget widget)
+	{
+		_widgets = widget ~ _widgets;
+	}
+
 	void addWidget(Widget widget)
 	{
 		_widgets ~= widget;
 	}
 
-	void sortWidgets()
+	void reverse()
 	{
-		import std.algorithm : sort;
+		_widgets.reverse();
+	}
 
-		_widgets.sort!((a, b) => a.priority < b.priority);
+	Widget[] widgets()
+	{
+		return _widgets;
 	}
 
 private:

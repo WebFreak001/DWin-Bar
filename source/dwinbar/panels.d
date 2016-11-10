@@ -34,11 +34,14 @@ class Panels
 		}
 
 		foreach (panel; _panels)
-			foreach (widget; _widgets)
+		{
+			foreach_reverse (widget; _prepended)
+				panel.prependWidget(widget);
+			foreach (widget; _appended)
 				panel.addWidget(widget);
-
-		foreach (panel; _panels)
-			panel.sortWidgets();
+			panel.reverse();
+			std.stdio.writeln(panel.widgets);
+		}
 
 		running = true;
 		XEvent e;
@@ -144,9 +147,14 @@ class Panels
 		return panel;
 	}
 
-	void addGlobalWidget(Widget[] widgets...)
+	void appendGlobalWidget(Widget[] widgets...)
 	{
-		_widgets ~= widgets;
+		_appended ~= widgets;
+	}
+
+	void prependGlobalWidget(Widget[] widgets...)
+	{
+		_prepended ~= widgets;
 	}
 
 	auto taskBar() @property
@@ -171,6 +179,6 @@ private:
 	Panel _trayHolder = null;
 	XBackend _backend;
 	Panel[] _panels;
-	Widget[] _widgets;
+	Widget[] _appended, _prepended;
 	Popup[] _popups;
 }

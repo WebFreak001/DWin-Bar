@@ -23,9 +23,9 @@ void main(string[] args)
 
 	auto commonInfo = PanelInfo(Screen.First, int.min, int.min, 0, 40, Side.Bottom);
 
-	panels.addGlobalWidget(new WorkspaceWidget(backend, fontPrimary, fontSecondary, commonInfo));
-	panels.addGlobalWidget(new VolumeWidget(panels, fontPrimary, fontSecondary, commonInfo));
-	panels.addGlobalWidget(new ClockWidget(fontPrimary, fontSecondary, commonInfo));
+	panels.prependGlobalWidget(new WorkspaceWidget(backend, fontPrimary, fontSecondary, commonInfo));
+	panels.appendGlobalWidget(new VolumeWidget(panels, fontPrimary, fontSecondary, commonInfo));
+	panels.appendGlobalWidget(new ClockWidget(fontPrimary, fontSecondary, commonInfo));
 
 	commonInfo.screen = Screen.First; // 0
 	auto panel1 = panels.addPanel(commonInfo);

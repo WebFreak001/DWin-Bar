@@ -17,7 +17,6 @@ enum trayHorizontalMargin = 4;
 interface Widget
 {
 	double length() @property;
-	int priority() @property;
 	bool hasHover() @property;
 	void click(Panel panel, double len, int panelX, int panelY);
 	void draw(Panel panel, Context context, double start);
