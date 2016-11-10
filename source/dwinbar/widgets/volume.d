@@ -4,6 +4,7 @@ import dwinbar.widgets.widget;
 import dwinbar.backend.panel;
 import dwinbar.backend.popup;
 import dwinbar.backend.xbackend;
+import dwinbar.backend.applaunch;
 import dwinbar.panels;
 
 import x11.Xlib;
@@ -41,10 +42,12 @@ void setVolume(float volume)
 
 class VolumePopup : Popup
 {
-	this(float volume, XBackend backend, int xPos, int yPos, int contentWidth, int contentHeight)
+	this(float volume, XBackend backend, int xPos, int yPos, int contentWidth,
+			int contentHeight, ImageSurface settings)
 	{
 		_volume = volume;
 		_height = contentHeight;
+		_settings = settings;
 		super(backend, xPos, yPos, contentWidth, contentHeight);
 	}
 
@@ -61,15 +64,23 @@ class VolumePopup : Popup
 			setVolume(_volume);
 		}
 
-		float y = (1 - _volume) * (_height - 16) + 8;
+		float y = (1 - _volume) * (_height - 24 - 8) + 8;
 		context.setSourceRGBA(0, 0, 0, 0.54);
 		context.rectangle(7, 8, 2, y);
 		context.fill();
 		context.setSourceRGB(0.11, 0.91, 0.71);
-		context.rectangle(7, y, 2, _height - y - 8);
+		context.rectangle(7, y, 2, _height - y - 24);
 		context.fill();
 		context.arc(8, y, 8, 0, 2 * 3.1415926);
 		context.fill();
+		context.setSourceSurface(_settings, 0, _height - 16);
+		context.paint();
+		if (_settingsHover)
+		{
+			context.setSourceRGBA(1, 1, 1, 0.2);
+			context.rectangle(0, _height - 16, 16, 16);
+			context.fill();
+		}
 	}
 
 	override void onEvent(ref XEvent e)
@@ -77,9 +88,15 @@ class VolumePopup : Popup
 		switch (e.type)
 		{
 		case MotionNotify:
+			if (e.xmotion.x > 32)
+			{
+				_settingsHover = false;
+				break;
+			}
+			_settingsHover = e.xmotion.y >= _height - 8 && e.xmotion.y <= _height + 16;
 			if (_mouseDown)
 			{
-				_volume = (e.xmotion.y - 8) / cast(float) _height;
+				_volume = (e.xmotion.y - 8) / cast(float)(_height - 24);
 				if (_volume < 0)
 					_volume = 0;
 				else if (_volume > 1)
@@ -90,10 +107,18 @@ class VolumePopup : Popup
 				changeTimer.start();
 			}
 			break;
+		case LeaveNotify:
+			_settingsHover = false;
+			break;
 		case ButtonPress:
-			if (e.xbutton.button == 1)
+			if (e.xbutton.x > 32)
 			{
-				_volume = (e.xbutton.y - 8) / cast(float) _height;
+				close();
+				break;
+			}
+			if (e.xbutton.button == 1 && e.xbutton.y < _height - 8)
+			{
+				_volume = (e.xbutton.y - 8) / cast(float)(_height - 24);
 				if (_volume < 0)
 					_volume = 0;
 				else if (_volume > 1)
@@ -106,8 +131,17 @@ class VolumePopup : Popup
 			}
 			break;
 		case ButtonRelease:
+			if (e.xbutton.x > 32)
+				break;
 			if (e.xbutton.button == 1)
+			{
+				if (_settingsHover)
+				{
+					spawnProcessDetach(["/usr/bin/pavucontrol"]);
+					close();
+				}
 				_mouseDown = false;
+			}
 			break;
 		default:
 			break;
@@ -121,7 +155,9 @@ class VolumePopup : Popup
 
 private:
 	StopWatch changeTimer;
+	ImageSurface _settings;
 	bool _queueChange;
+	bool _settingsHover;
 	bool _mouseDown;
 	int _height;
 	float _volume;
@@ -138,15 +174,12 @@ class VolumeWidget : Widget
 
 		_volume = getVolume();
 
+		_settings = ImageSurface.fromPng("res/icon/settings.png");
+
 		icons ~= ImageSurface.fromPng("res/icon/volume-low.png");
 		icons ~= ImageSurface.fromPng("res/icon/volume-medium.png");
 		icons ~= ImageSurface.fromPng("res/icon/volume-high.png");
 		icons ~= ImageSurface.fromPng("res/icon/volume-off.png");
-	}
-
-	int priority() @property
-	{
-		return 0;
 	}
 
 	double length() @property
@@ -178,7 +211,8 @@ class VolumeWidget : Widget
 			return;
 		}
 		int popupX = -cast(int)(len - panelX);
-		_activePopup = new VolumePopup(vol, _panels.backend, popupX + 16 - 16, y - xwa.y - 160, 16, 150);
+		_activePopup = new VolumePopup(vol, _panels.backend, popupX + 16 - 16,
+				y - xwa.y - 160, 16, 150, _settings);
 		_panels.addPopup(_activePopup);
 	}
 
@@ -225,6 +259,7 @@ class VolumeWidget : Widget
 private:
 	int _activeIcon = 0;
 	float _volume;
+	ImageSurface _settings;
 	VolumePopup _activePopup;
 	string _font, _secFont;
 	PanelInfo info;
