@@ -1,22 +1,19 @@
 module dwinbar.widgets.volume;
 
-import dwinbar.widgets.widget;
-import dwinbar.backend.panel;
-import dwinbar.backend.popup;
 import dwinbar.backend.xbackend;
 import dwinbar.backend.applaunch;
-import dwinbar.panels;
+import dwinbar.widget;
+import dwinbar.bar;
 
 import x11.Xlib;
 import x11.X;
-
-import cairo.cairo;
 
 import std.datetime;
 import std.format;
 import std.conv;
 import std.regex;
 import std.process;
+import std.math;
 
 static import std.stdio;
 
@@ -40,190 +37,96 @@ void setVolume(float volume)
 	execute(["amixer", "set", "Master", (cast(int)(volume * 100)).to!string ~ "%"]);
 }
 
-class VolumePopup : Popup
+class VolumeWidget : Widget, IMouseWatch
 {
-	this(float volume, XBackend backend, int xPos, int yPos, int contentWidth,
-			int contentHeight, ImageSurface settings)
+	this()
 	{
-		_volume = volume;
-		_height = contentHeight;
-		_settings = settings;
-		super(backend, xPos, yPos, contentWidth, contentHeight);
-	}
-
-	override void draw(Context context)
-	{
-		if (_volume < 0)
-			_volume = 0;
-		if (_volume > 1)
-			_volume = 1;
-		if (_queueChange && changeTimer.peek.to!("msecs", int) >= 50)
-		{
-			_queueChange = false;
-			changeTimer.stop();
-			setVolume(_volume);
-		}
-
-		float y = (1 - _volume) * (_height - 24 - 8) + 8;
-		context.setSourceRGBA(0, 0, 0, 0.54);
-		context.rectangle(7, 8, 2, y);
-		context.fill();
-		context.setSourceRGB(0.11, 0.91, 0.71);
-		context.rectangle(7, y, 2, _height - y - 24);
-		context.fill();
-		context.arc(8, y, 8, 0, 2 * 3.1415926);
-		context.fill();
-		context.setSourceSurface(_settings, 0, _height - 16);
-		context.paint();
-		if (_settingsHover)
-		{
-			context.setSourceRGBA(1, 1, 1, 0.2);
-			context.rectangle(0, _height - 16, 16, 16);
-			context.fill();
-		}
-	}
-
-	override void onEvent(ref XEvent e)
-	{
-		switch (e.type)
-		{
-		case MotionNotify:
-			if (e.xmotion.x > 32)
-			{
-				_settingsHover = false;
-				break;
-			}
-			_settingsHover = e.xmotion.y >= _height - 8 && e.xmotion.y <= _height + 16;
-			if (_mouseDown)
-			{
-				_volume = (e.xmotion.y - 8) / cast(float)(_height - 24);
-				if (_volume < 0)
-					_volume = 0;
-				else if (_volume > 1)
-					_volume = 1;
-				_volume = 1 - _volume;
-				_queueChange = true;
-				changeTimer.reset();
-				changeTimer.start();
-			}
-			break;
-		case LeaveNotify:
-			_settingsHover = false;
-			break;
-		case ButtonPress:
-			if (e.xbutton.x > 32)
-			{
-				close();
-				break;
-			}
-			if (e.xbutton.button == 1 && e.xbutton.y < _height - 8)
-			{
-				_volume = (e.xbutton.y - 8) / cast(float)(_height - 24);
-				if (_volume < 0)
-					_volume = 0;
-				else if (_volume > 1)
-					_volume = 1;
-				_volume = 1 - _volume;
-				_queueChange = true;
-				_mouseDown = true;
-				changeTimer.reset();
-				changeTimer.start();
-			}
-			break;
-		case ButtonRelease:
-			if (e.xbutton.x > 32)
-				break;
-			if (e.xbutton.button == 1)
-			{
-				if (_settingsHover)
-				{
-					spawnProcessDetach(["/usr/bin/pavucontrol"]);
-					close();
-				}
-				_mouseDown = false;
-			}
-			break;
-		default:
-			break;
-		}
-	}
-
-	float volume()
-	{
-		return _volume;
-	}
-
-private:
-	StopWatch changeTimer;
-	ImageSurface _settings;
-	bool _queueChange;
-	bool _settingsHover;
-	bool _mouseDown;
-	int _height;
-	float _volume;
-}
-
-class VolumeWidget : Widget
-{
-	this(Panels panels, string font, string secFont, PanelInfo panelInfo)
-	{
-		_panels = panels;
-		_font = font;
-		_secFont = secFont;
-		info = panelInfo;
-
 		_volume = getVolume();
 
-		_settings = ImageSurface.fromPng("res/icon/settings.png");
-
-		icons ~= ImageSurface.fromPng("res/icon/volume-low.png");
-		icons ~= ImageSurface.fromPng("res/icon/volume-medium.png");
-		icons ~= ImageSurface.fromPng("res/icon/volume-high.png");
-		icons ~= ImageSurface.fromPng("res/icon/volume-off.png");
+		icons ~= read_png("res/icon/volume-low.png").premultiply;
+		icons ~= read_png("res/icon/volume-medium.png").premultiply;
+		icons ~= read_png("res/icon/volume-high.png").premultiply;
+		icons ~= read_png("res/icon/volume-off.png").premultiply;
 	}
 
-	double length() @property
+	override int width(bool vertical) const
 	{
-		return 32;
+		return icons[0].w + 108;
 	}
 
-	bool hasHover() @property
+	override int height(bool vertical) const
+	{
+		return icons[0].h;
+	}
+
+	override bool hasHover() @property
 	{
 		return true;
 	}
 
-	void click(Panel panel, double len, int panelX, int panelY)
+	override void mouseDown(bool vertical, int mx, int my, int button)
 	{
-		float vol = _volume = getVolume();
-		if (vol < -1)
-			return;
-		if (vol < 0)
-			vol = -vol;
-		int x, y;
-		Window child;
-		XWindowAttributes xwa;
-		XTranslateCoordinates(_panels.backend.display, panel.window,
-				_panels.backend.rootWindow, 0, 0, &x, &y, &child);
-		XGetWindowAttributes(_panels.backend.display, panel.window, &xwa);
-		if (_activePopup && !_activePopup.closed)
+		if (button == 1)
 		{
-			_activePopup.close();
-			return;
+			down = true;
+			mouseMove(vertical, mx, my);
 		}
-		int popupX = -cast(int)(len - panelX);
-		_activePopup = new VolumePopup(vol, _panels.backend, popupX + 16 - 16,
-				y - xwa.y - 160, 16, 150, _settings);
-		_panels.addPopup(_activePopup);
 	}
 
-	void updateLazy()
+	override void mouseUp(bool vertical, int mx, int my, int button)
 	{
-		_volume = getVolume();
-		updateVolume();
+		if (button == 1)
+		{
+			down = false;
+			frame = 0;
+		}
+	}
+
+	override void mouseMove(bool vertical, int mx, int my)
+	{
+		if (down)
+		{
+			_volume = (mx - icons[0].w - 8) / 100.0f;
+			if (_volume < 0)
+				_volume = 0;
+			if (_volume > 1)
+				_volume = 1;
+			queueChange = true;
+			changeTimer.reset();
+			changeTimer.start();
+			updateVolume();
+			queueRedraw();
+		}
+	}
+
+	override void update(Bar bar)
+	{
+		if (down)
+		{
+			if (queueChange && changeTimer.peek.to!("msecs", int) >= 50)
+			{
+				queueChange = false;
+				changeTimer.stop();
+				setVolume(_volume);
+			}
+		}
+		else
+		{
+			if (++frame >= 50)
+			{
+				auto oldVol = _volume;
+				_volume = getVolume();
+				if (abs(oldVol - _volume) > 0.01f)
+					queueRedraw();
+				updateVolume();
+				frame = 0;
+			}
+		}
 	}
 
 	void updateVolume()
 	{
+		auto oldIcon = _activeIcon;
 		if (_volume < 0)
 			_activeIcon = 3;
 		else if (_volume <= 0.3f)
@@ -232,37 +135,33 @@ class VolumeWidget : Widget
 			_activeIcon = 1;
 		else if (_volume <= 1)
 			_activeIcon = 2;
+		if (oldIcon != _activeIcon)
+			queueRedraw();
 	}
 
-	void draw(Panel panel, Context context, double start)
+	override IFImage redraw(bool vertical, Bar bar, bool hovered)
 	{
-		if (_activePopup)
-		{
-			_volume = _activePopup.volume;
-			updateVolume();
-		}
-		double x, y;
-		if (info.isHorizontal)
-		{
-			x = start + 8;
-			y = barMargin + 8;
-		}
-		else
-		{
-			x = barMargin + 8;
-			y = start + 8;
-		}
-		context.setSourceSurface(icons[_activeIcon], x, y);
-		context.paint();
+		IFImage ret;
+		ret.w = width(vertical);
+		ret.h = height(vertical);
+		ret.c = ColFmt.RGBA;
+		ret.pixels.length = ret.w * ret.h * ret.c;
+		ret.pixels[] = 0;
+
+		ret.draw(icons[_activeIcon], 0, 0);
+		ret.fillRect!4(icons[_activeIcon].w + 8, icons[_activeIcon].h / 2 - 1, 100, 1,
+				[0xFF, 0xFF, 0xFF, 0xFF]);
+		ret.fillRect!4(icons[_activeIcon].w + 8 + cast(int)(_volume * 100), 0, 2,
+				icons[_activeIcon].h, [0xFF, 0xFF, 0xFF, 0xFF]);
+
+		return ret;
 	}
 
 private:
 	int _activeIcon = 0;
+	int frame = 50;
 	float _volume;
-	ImageSurface _settings;
-	VolumePopup _activePopup;
-	string _font, _secFont;
-	PanelInfo info;
-	Panels _panels;
-	Surface[] icons;
+	IFImage[] icons;
+	bool down, queueChange;
+	StopWatch changeTimer;
 }

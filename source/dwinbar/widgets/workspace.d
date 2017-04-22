@@ -1,105 +1,102 @@
 module dwinbar.widgets.workspace;
 
-import dwinbar.widgets.widget;
+import dwinbar.widget;
+import dwinbar.bar;
 
-import dwinbar.backend.panel;
 import dwinbar.backend.xbackend;
 
-import dwinbar.cairoext;
-
-import cairo.cairo;
-
+import std.datetime;
 import std.format;
-import std.string;
 import std.conv;
 
-class WorkspaceWidget : Widget
+class WorkspaceWidget : Widget, IPropertyWatch, IMouseWatch
 {
-	this(XBackend backend, string font, string secFont, PanelInfo panelInfo)
+	this(XBackend x)
 	{
-		x = backend;
-		_font = font;
-		_secFont = secFont;
-		info = panelInfo;
+		this.x = x;
+		x.tryGetWorkspaceNames(desktops);
 	}
 
-	bool hasHover() @property
+	override int width(bool) const
+	{
+		return cast(int) desktops.length * 32;
+	}
+
+	override int height(bool) const
+	{
+		return 16;
+	}
+
+	override bool hasHover() @property
 	{
 		return false;
 	}
 
-	double length() @property
+	override IFImage redraw(bool vertical, Bar bar, bool hovered)
 	{
-		return info.isHorizontal ? desktops.length * 32 : 16;
-	}
-
-	void click(Panel panel, double len, int panelX, int panelY)
-	{
-		int desktop = (cast(int) len) / 32;
-		if (desktop >= 0 && desktop < desktops.length)
-		{
-			x.currentWorkspace = desktop;
-		}
-	}
-
-	void updateLazy()
-	{
-		if (x.tryGetWorkspaceNames(_desktops))
-		{
-			_hasNames = true;
-		}
-		else
-		{
-			_hasNames = false;
-			_desktopLen = x.numWorkspaces;
-		}
-		_currentDesktop = x.currentWorkspace;
-	}
-
-	void draw(Panel panel, Context context, double start)
-	{
-		context.roundedRectangle(start + _currentDesktop * 32, barMargin, 32, 32, 2);
-		context.setSourceRGBA(0, 0, 0, 0.5);
-		context.fill();
-		context.setSourceRGB(1, 1, 1);
-		TextExtents ext;
+		IFImage ret;
+		ret.w = width(vertical);
+		ret.h = height(vertical);
+		ret.c = ColFmt.RGBA;
+		ret.pixels.length = ret.w * ret.h * ret.c;
+		ret.pixels[] = 0;
 
 		foreach (i, desktop; desktops)
 		{
-			if (i == _currentDesktop)
-				context.selectFontFace(_font, FontSlant.CAIRO_FONT_SLANT_NORMAL,
-						FontWeight.CAIRO_FONT_WEIGHT_NORMAL);
-			else
-				context.selectFontFace(_secFont, FontSlant.CAIRO_FONT_SLANT_NORMAL,
-						FontWeight.CAIRO_FONT_WEIGHT_NORMAL);
-			context.setFontSize(16);
-			ext = context.textExtents(desktop);
-			context.moveTo(start + i * 32 + 16 - (ext.width / 2 + ext.x_bearing),
-					barMargin + 16 - (ext.height / 2 + ext.y_bearing));
-			context.showText(desktop);
+			auto font = bar.faceSecondary;
+			if (i == currentWorkspace)
+				font = bar.facePrimary;
+			auto size = measureText(font, desktop);
+			ret.drawText(font, desktop, i * 32 + 16 - size[0] / 2, 14,
+					cast(ubyte[4])[0xFF, 0xFF, 0xFF, 0xFF]);
+		}
+
+		return ret;
+	}
+
+	override void update(Bar)
+	{
+	}
+
+	override void onPropertyChange(Window window, Atom property)
+	{
+		if (window == x.rootWindow)
+		{
+			if (property == XAtom[AtomName._NET_DESKTOP_NAMES])
+			{
+				x.tryGetWorkspaceNames(desktops);
+				queueRedraw();
+			}
+			else if (property == XAtom[AtomName._NET_CURRENT_DESKTOP])
+			{
+				currentWorkspace = x.currentWorkspace;
+				queueRedraw();
+			}
 		}
 	}
 
-	string[] desktops() @property
+	void mouseDown(bool vertical, int mx, int my, int button)
 	{
-		if (_hasNames)
-			return _desktops;
-		else
+		int desktop = (cast(int) mx) / 32;
+		if (desktop >= 0 && desktop < desktops.length)
 		{
-			string[] names;
-			for (int i = 0; i < _desktopLen; i++)
-				names ~= (i + 1).to!string;
-			return names;
+			if (x.i3.available)
+				x.i3.sendCommand("workspace " ~ desktops[desktop]);
+			else
+				x.currentWorkspace = desktop;
 		}
+	}
+
+	void mouseUp(bool vertical, int x, int y, int button)
+	{
+	}
+
+	void mouseMove(bool vertical, int x, int y)
+	{
 	}
 
 private:
 	XBackend x;
-	string[] _desktops;
-	int _desktopLen;
-	bool _hasNames = false;
-	int _currentDesktop;
-	string _font, _secFont;
-	PanelInfo info;
-	Surface icon;
+	string[] desktops;
+	uint currentWorkspace;
 }

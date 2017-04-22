@@ -8,11 +8,13 @@ static import std.stdio;
 
 import core.thread;
 
-import x11.Xutil;
-import x11.Xlib;
+public import x11.X;
+public import x11.Xlib;
+public import x11.Xutil;
+public import x11.Xatom;
 import x11.extensions.Xrandr;
-import x11.X;
-import x11.Xatom;
+
+import dwinbar.backend.i3;
 
 struct XineramaScreenInfo
 {
@@ -84,6 +86,8 @@ enum AtomName : string
 	_NET_WM_ICON = "_NET_WM_ICON",
 	_NET_WM_ICON_GEOMETRY = "_NET_WM_ICON_GEOMETRY",
 	_NET_WM_ICON_NAME = "_NET_WM_ICON_NAME",
+	_NET_WM_HANDLED_ICONS = "_NET_WM_HANDLED_ICONS",
+	_NET_WM_USER_TIME = "_NET_WM_USER_TIME",
 	_NET_CLOSE_WINDOW = "_NET_CLOSE_WINDOW",
 	UTF8_STRING = "UTF8_STRING",
 	_NET_SUPPORTING_WM_CHECK = "_NET_SUPPORTING_WM_CHECK",
@@ -104,6 +108,7 @@ enum AtomName : string
 	_XEMBED_INFO = "_XEMBED_INFO",
 	_NET_WM_PID = "_NET_WM_PID",
 	_NET_WM_PING = "_NET_WM_PING",
+	I3_SOCKET_PATH = "I3_SOCKET_PATH",
 	XdndAware = "XdndAware",
 	XdndEnter = "XdndEnter",
 	XdndPosition = "XdndPosition",
@@ -165,6 +170,8 @@ class XBackend
 			assert(atom, "No such special atom: " ~ (cast(SpecialAtom) i).to!string);
 
 		loadScreens();
+
+		i3 = I3Utils(this);
 	}
 
 	~this()
@@ -233,9 +240,8 @@ class XBackend
 
 	void currentWorkspace(uint value) @property
 	{
-		if (XChangeProperty(_display, _root, XAtom[AtomName._NET_CURRENT_DESKTOP],
-				XA_CARDINAL, 32, PropModeReplace, cast(ubyte*)&value, 1) != Success)
-			std.stdio.stderr.writeln("Couldn't change workspace!");
+		XChangeProperty(_display, _root, XAtom[AtomName._NET_CURRENT_DESKTOP],
+				XA_CARDINAL, 32, PropModeReplace, cast(ubyte*)&value, 1);
 	}
 
 	uint numWorkspaces() @property
@@ -271,10 +277,7 @@ class XBackend
 		return false;
 	}
 
-	auto satom() @property
-	{
-		return _atoms;
-	}
+	I3Utils i3;
 
 private:
 	void loadScreens()

@@ -1,23 +1,18 @@
 module dwinbar.backend.applist;
 
-import x11.Xutil;
-import x11.Xlib;
-import x11.X;
-import x11.Xatom;
-
-import cairo.cairo;
-
-import dwinbar.widgets.widget;
-
 import dwinbar.backend.xbackend;
 import dwinbar.backend.icongen;
+import dwinbar.bar;
 
 import std.algorithm;
+import std.array;
+import std.range;
 import std.string;
+
+import imageformats;
 
 enum AppState
 {
-	focused,
 	visible,
 	minimized,
 	urgent
@@ -28,139 +23,119 @@ struct AppInfo
 	Window window;
 	string title;
 	AppState state;
-	Surface icon;
-	ubyte[] pixels;
+	string iconName;
+	IFImage icon;
 }
 
-enum Success = 0;
-
-private AppInfo[Window] cache;
-
-AppInfo fetchWindowInfo(alias targetIconSize = appIconSize)(XBackend backend, Window app)
+string getWindowTitle(XBackend x, Window window)
 {
 	XTextProperty prop;
-	XGetTextProperty(backend.display, app, &prop, XAtom[AtomName._NET_WM_NAME]);
-	AppInfo info;
-	if ((app in cache)!is null)
-		info = cache[app];
-	info.window = app;
-	info.title = cast(string) prop.value[0 .. prop.nitems].dup;
-	info.state = AppState.visible;
+	XGetTextProperty(x.display, window, &prop, XAtom[AtomName._NET_WM_NAME]);
+	return cast(string) prop.value[0 .. prop.nitems].dup;
+}
 
-	XWMHints* hints = XGetWMHints(backend.display, app);
-	if (hints)
-	{
-		scope (exit)
-			XFree(hints);
-		if (hints.flags & XUrgencyHint)
-			info.state = AppState.urgent;
-	}
+struct AppList
+{
+	// Keep X first because of unions
+	XBackend x;
 
-	if ((app in cache) is null)
+	AppInfo[] infos;
+
+	Window activeWindow;
+
+	alias infos this;
+
+	void updateActive()
 	{
 		Atom actualType;
 		int actualFormat;
 		ulong numItems, bytesAfter;
-		ulong* cardResult;
-		if (XGetWindowProperty(backend.display, app,
-				XAtom[AtomName._NET_WM_ICON], 0, uint.max, false, XA_CARDINAL,
-				&actualType, &actualFormat, &numItems, &bytesAfter,
-				cast(ubyte**)&cardResult) == Success && numItems > 2)
+		Window* result;
+
+		scope (exit)
+			XFree(result);
+		XGetWindowProperty(x.display, x.rootWindow, XAtom[AtomName._NET_ACTIVE_WINDOW],
+				0, int.max, false, XA_WINDOW, &actualType, &actualFormat, &numItems,
+				&bytesAfter, cast(ubyte**)&result);
+
+		activeWindow = *result;
+	}
+
+	void updateClientList(int iconSize)
+	{
+		Atom actualType;
+		int actualFormat;
+		ulong numItems, bytesAfter;
+		Window* result;
+
+		scope (exit)
+			XFree(result);
+		XGetWindowProperty(x.display, x.rootWindow, XAtom[AtomName._NET_CLIENT_LIST],
+				0, int.max, false, XA_WINDOW, &actualType, &actualFormat, &numItems,
+				&bytesAfter, cast(ubyte**)&result);
+
+		Window[] apps = result[0 .. numItems];
+		Window[] added;
+
+		XTextProperty prop;
+
+		AppLoop: foreach (app; apps)
 		{
-			ulong[] data = cardResult[0 .. numItems];
-			size_t start = findBestIcon!targetIconSize(data);
-			ulong width = data[start];
-			ulong height = data[start + 1];
-			auto stride = formatStrideForWidth(Format.CAIRO_FORMAT_ARGB32, targetIconSize);
-			ulong offset = start + 2;
-			ulong[] scaled = scaleImage(targetIconSize, targetIconSize,
-				data[offset .. offset + width * height], cast(int) width, cast(int) height);
-			info.pixels = new ubyte[stride * targetIconSize];
-			for (int i = 0; i < targetIconSize * targetIconSize; i++)
+			if (updateWindow(app, iconSize))
+				added ~= app;
+		}
+
+		auto toRemove = infos.map!"a.window".enumerate.array;
+		foreach (app; added)
+		{
+			auto idx = toRemove.countUntil!"a.value == b"(app);
+			if (idx != -1)
 			{
-				ulong color = scaled[i];
-				info.pixels[i * 4 + 0] = (color >> 0) & 0xFF;
-				info.pixels[i * 4 + 1] = (color >> 8) & 0xFF;
-				info.pixels[i * 4 + 2] = (color >> 16) & 0xFF;
-				info.pixels[i * 4 + 3] = (color >> 24) & 0xFF;
+				toRemove[idx] = toRemove[$ - 1];
+				toRemove.length--;
 			}
-			info.icon = new ImageSurface(info.pixels, Format.CAIRO_FORMAT_ARGB32,
-				targetIconSize, targetIconSize, stride);
 		}
-		else
-			info.icon = new ImageSurface([0, 0, 0, 0],
-				Format.CAIRO_FORMAT_ARGB32, 1, 1,
-				formatStrideForWidth(Format.CAIRO_FORMAT_ARGB32, 1));
+		foreach_reverse (rem; toRemove)
+			infos = infos.remove(rem.index);
 	}
 
-	cache[app] = info;
-	return info;
-}
-
-AppInfo[] getOpenApps(XBackend backend)
-{
-	Atom actualType;
-	int actualFormat;
-	ulong numItems, bytesAfter;
-	Window* result;
-	Atom* atomsResult;
-	ulong* cardResult;
-
-	scope (exit)
-		XFree(result);
-	XGetWindowProperty(backend.display, backend.rootWindow,
-		XAtom[AtomName._NET_CLIENT_LIST], 0, int.max, false, XA_WINDOW,
-		&actualType, &actualFormat, &numItems, &bytesAfter, cast(ubyte**)&result);
-
-	Window[] apps = result[0 .. numItems];
-	foreach_reverse (win; cache.keys)
+	bool updateWindow(Window window, int iconSize)
 	{
-		if (!apps.canFind(win))
-		{
-			cache[win].icon.dispose();
-			cache.remove(win);
-		}
-	}
-
-	Window focused;
-	int revert_to;
-
-	XGetInputFocus(backend.display, &focused, &revert_to);
-
-	XTextProperty prop;
-
-	AppInfo[] infos;
-
-	AppLoop: foreach (app; apps)
-	{
+		Atom actualType;
+		int actualFormat;
+		ulong numItems, bytesAfter;
+		Atom* atomsResult;
 		scope (exit)
 			XFree(atomsResult);
-		if (XGetWindowProperty(backend.display, app,
-				XAtom[AtomName._NET_WM_STATE], 0, 32, false, XA_ATOM,
-				&actualType, &actualFormat, &numItems, &bytesAfter,
-				cast(ubyte**)&atomsResult) == Success)
+		if (XGetWindowProperty(x.display, window, XAtom[AtomName._NET_WM_STATE], 0,
+				32, false, XA_ATOM, &actualType, &actualFormat, &numItems,
+				&bytesAfter, cast(ubyte**)&atomsResult) == Success)
 		{
-			auto info = fetchWindowInfo(backend, app);
+			auto existingIndex = infos.countUntil!"a.window == b"(window);
+			AppInfo info;
+			info.window = window;
+			if (existingIndex != -1)
+				info = infos[existingIndex];
 			Atom[] atoms = atomsResult[0 .. numItems];
 			foreach (atom; atoms)
 			{
 				if (atom == XAtom[AtomName._NET_WM_STATE_SKIP_TASKBAR])
-					continue AppLoop;
+				{
+					if (existingIndex != -1)
+						infos = infos.remove(existingIndex);
+					return false;
+				}
 				if (info.state == AppState.visible)
 				{
 					if (atom == XAtom[AtomName._NET_WM_STATE_HIDDEN])
 						info.state = AppState.minimized;
-					else if (atom == XAtom[AtomName._NET_WM_STATE_FOCUSED])
-						info.state = AppState.focused;
 				}
 				if (atom == XAtom[AtomName._NET_WM_STATE_DEMANDS_ATTENTION])
 					info.state = AppState.urgent;
 			}
 
-			if (focused == app)
-				info.state = AppState.focused;
-
-			XWMHints* hints = XGetWMHints(backend.display, app);
+			info.title = getWindowTitle(x, window);
+			XWMHints* hints = XGetWMHints(x.display, window);
 			if (hints)
 			{
 				scope (exit)
@@ -169,49 +144,62 @@ AppInfo[] getOpenApps(XBackend backend)
 					info.state = AppState.urgent;
 			}
 
-			if ((app in cache) is null)
+			if (existingIndex == -1)
 			{
-				if (XGetWindowProperty(backend.display, app,
-						XAtom[AtomName._NET_WM_ICON], 0, uint.max, false,
-						XA_CARDINAL, &actualType, &actualFormat, &numItems,
-						&bytesAfter, cast(ubyte**)&cardResult) == Success && numItems > 2)
-				{
-					ulong[] data = cardResult[0 .. numItems];
-					size_t start = findBestIcon(data);
-					ulong width = data[start];
-					ulong height = data[start + 1];
-					auto stride = formatStrideForWidth(Format.CAIRO_FORMAT_ARGB32,
-						appIconSize);
-					ulong offset = start + 2;
-					ulong[] scaled = scaleImage(appIconSize, appIconSize,
-						data[offset .. offset + width * height], cast(int) width, cast(int) height);
-					info.pixels = new ubyte[stride * appIconSize];
-					for (int i = 0; i < appIconSize * appIconSize; i++)
-					{
-						ulong color = scaled[i];
-						info.pixels[i * 4 + 0] = (color >> 0) & 0xFF;
-						info.pixels[i * 4 + 1] = (color >> 8) & 0xFF;
-						info.pixels[i * 4 + 2] = (color >> 16) & 0xFF;
-						info.pixels[i * 4 + 3] = (color >> 24) & 0xFF;
-					}
-					info.icon = new ImageSurface(info.pixels,
-						Format.CAIRO_FORMAT_ARGB32, appIconSize, appIconSize, stride);
-				}
-				else
-					info.icon = new ImageSurface([0, 0, 0, 0],
-						Format.CAIRO_FORMAT_ARGB32, 1, 1,
-						formatStrideForWidth(Format.CAIRO_FORMAT_ARGB32, 1));
+				infos ~= info;
+				XSetWindowAttributes attrib;
+				attrib.event_mask = PropertyChangeMask;
+				XChangeWindowAttributes(x.display, window, CWEventMask, &attrib);
+				updateIcon(window, iconSize);
 			}
-
-			cache[app] = info;
-			infos ~= info;
+			else
+				infos[existingIndex] = info;
+			return true;
 		}
+		else
+			return false;
 	}
 
-	return infos;
+	bool updateIcon(Window window, int targetSize)
+	{
+		Atom actualType;
+		int actualFormat;
+		ulong numItems, bytesAfter;
+		Atom* result;
+		auto existingIndex = infos.countUntil!"a.window == b"(window);
+		if (existingIndex == -1)
+			return false;
+		if (XGetWindowProperty(x.display, window, XAtom[AtomName._NET_WM_ICON], 0,
+				uint.max, false, XA_CARDINAL, &actualType, &actualFormat, &numItems,
+				&bytesAfter, cast(ubyte**)&result) == Success && numItems > 2)
+		{
+			ulong[] data = result[0 .. numItems];
+			size_t start = findBestIcon(data, targetSize);
+			int w = cast(int) data[start];
+			int h = cast(int) data[start + 1];
+			immutable ulong offset = start + 2;
+			ulong[] scaled = scaleImage(targetSize, targetSize, data[offset .. offset + w * h], w, h);
+			auto pixels = new ubyte[targetSize * targetSize * 4];
+			for (int i = 0; i < targetSize * targetSize; i++)
+			{
+				immutable ulong color = scaled[i];
+				ubyte alpha = (color >> 24) & 0xFF;
+				pixels[i * 4 + 0] = (((color >> 0) & 0xFF) * cast(int) alpha / 255) & 0xFF;
+				pixels[i * 4 + 1] = (((color >> 8) & 0xFF) * cast(int) alpha / 255) & 0xFF;
+				pixels[i * 4 + 2] = (((color >> 16) & 0xFF) * cast(int) alpha / 255) & 0xFF;
+				pixels[i * 4 + 3] = alpha;
+			}
+			infos[existingIndex].icon.w = infos[existingIndex].icon.h = targetSize;
+			infos[existingIndex].icon.c = ColFmt.RGBA;
+			infos[existingIndex].icon.pixels = pixels;
+			return true;
+		}
+		else
+			return false;
+	}
 }
 
-size_t findBestIcon(alias targetIconSize = appIconSize)(ulong[] data)
+size_t findBestIcon(ulong[] data, uint targetIconSize)
 {
 	import std.math;
 
@@ -220,7 +208,7 @@ size_t findBestIcon(alias targetIconSize = appIconSize)(ulong[] data)
 
 	size_t currentBest = 0;
 	ulong currentArea = data[0] * data[1];
-	enum targetArea = (targetIconSize * 2) * (targetIconSize * 2);
+	ulong targetArea = (targetIconSize * 2) * (targetIconSize * 2);
 	size_t cursor = 2 + currentArea;
 	while (cursor < data.length)
 	{

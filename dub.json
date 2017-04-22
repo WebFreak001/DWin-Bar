@@ -6,15 +6,11 @@
 		"webfreak"
 	],
 	"dependencies": {
-		"cairod": "~>0.0.1-alpha.3+1.10.2",
-		"x11": "~>1.0.13",
-		"imageformats": "~>5.2.0"
+		"x11": "~>1.0.16",
+		"imageformats": "~>6.1.0",
+		"derelict-ft": "~>2.0.0-alpha.1"
 	},
 	"libs": [
 		"Xinerama"
-	],
-	"versions": [
-		"CairoXlibSurface",
-		"CairoPNG"
 	]
 }

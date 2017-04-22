@@ -1,38 +1,32 @@
-import dwinbar.backend.xbackend;
-import dwinbar.backend.panel;
-
 import dwinbar.widgets.clock;
 import dwinbar.widgets.volume;
-import dwinbar.widgets.tray;
 import dwinbar.widgets.workspace;
 
-import dwinbar.panels;
+/*import dwinbar.widgets.volume;
+import dwinbar.widgets.tray;
+import dwinbar.widgets.workspace;*/
 
-import std.file;
-import std.path;
+import dwinbar.bar;
 
 void main(string[] args)
 {
-	chdir(thisExePath.dirName);
+	BarConfiguration config;
+	config.fontPrimary = "Roboto Medium";
+	config.fontSecondary = "Roboto Light";
 
-	XBackend backend = new XBackend();
-	Panels panels = new Panels(backend);
+	PanelConfiguration panelConfig;
+	panelConfig.height = 38;
 
-	string fontPrimary = "Roboto Medium";
-	string fontSecondary = "Roboto Light";
+	Bar bar = loadBar(config);
 
-	auto commonInfo = PanelInfo(Screen.First, int.min, int.min, 0, 40, Side.Bottom);
+	//dfmt off
+	bar.addPanel(Screen.First, Dock.Bottom, panelConfig)
+		.add(new ClockWidget())
+		.add(new VolumeWidget())
+		.add(new WorkspaceWidget(bar.x))
+	;
+	//dfmt on
 
-	panels.prependGlobalWidget(new WorkspaceWidget(backend, fontPrimary, fontSecondary, commonInfo));
-	panels.appendGlobalWidget(new VolumeWidget(panels, fontPrimary, fontSecondary, commonInfo));
-	panels.appendGlobalWidget(new ClockWidget(fontPrimary, fontSecondary, commonInfo));
-
-	commonInfo.screen = Screen.First; // 0
-	auto panel1 = panels.addPanel(commonInfo);
-	panels.taskBar = panel1;
-	panel1.addWidget(new TrayWidget(fontPrimary, fontSecondary, commonInfo));
-	//commonInfo.screen = Screen.Second; // 1
-	//panels.addPanel(commonInfo);
-
-	panels.start();
+	//bar.tray = panel1;
+	bar.start();
 }
