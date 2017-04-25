@@ -11,10 +11,11 @@ import std.conv;
 
 class WorkspaceWidget : Widget, IPropertyWatch, IMouseWatch
 {
-	this(XBackend x)
+	this(XBackend x, string limitDesktops = null)
 	{
 		this.x = x;
-		x.tryGetWorkspaceNames(desktops);
+		this.limitDesktops = limitDesktops;
+		refreshDesktops();
 	}
 
 	override int width(bool) const
@@ -64,12 +65,15 @@ class WorkspaceWidget : Widget, IPropertyWatch, IMouseWatch
 		{
 			if (property == XAtom[AtomName._NET_DESKTOP_NAMES])
 			{
-				x.tryGetWorkspaceNames(desktops);
+				refreshDesktops();
 				queueRedraw();
 			}
 			else if (property == XAtom[AtomName._NET_CURRENT_DESKTOP])
 			{
-				currentWorkspace = x.currentWorkspace;
+				if (x.i3.available)
+					refreshDesktops();
+				else
+					currentWorkspace = x.currentWorkspace;
 				queueRedraw();
 			}
 		}
@@ -96,6 +100,26 @@ class WorkspaceWidget : Widget, IPropertyWatch, IMouseWatch
 	}
 
 private:
+	void refreshDesktops()
+	{
+		if (x.i3.available)
+		{
+			auto workspaces = x.i3.getWorkspaces();
+			desktops.length = 0;
+			foreach (i, workspace; workspaces)
+			{
+				if (limitDesktops is null || workspace.output == limitDesktops)
+				{
+					if (workspace.visible)
+						currentWorkspace = cast(uint) desktops.length;
+					desktops ~= workspace.name;
+				}
+			}
+		}
+		else
+			x.tryGetWorkspaceNames(desktops);
+	}
+
 	void changeTo(uint desktop)
 	{
 		if (desktop >= 0 && desktop < desktops.length)
@@ -110,4 +134,5 @@ private:
 	XBackend x;
 	string[] desktops;
 	uint currentWorkspace;
+	string limitDesktops;
 }
