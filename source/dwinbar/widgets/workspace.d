@@ -77,14 +77,14 @@ class WorkspaceWidget : Widget, IPropertyWatch, IMouseWatch
 
 	void mouseDown(bool vertical, int mx, int my, int button)
 	{
+		if (button == 5)
+			changeTo(currentWorkspace + 1);
+		else if (button == 4)
+			changeTo(currentWorkspace - 1);
+		if (button != 1)
+			return;
 		int desktop = (cast(int) mx) / 32;
-		if (desktop >= 0 && desktop < desktops.length)
-		{
-			if (x.i3.available)
-				x.i3.sendCommand("workspace " ~ desktops[desktop]);
-			else
-				x.currentWorkspace = desktop;
-		}
+		changeTo(desktop);
 	}
 
 	void mouseUp(bool vertical, int x, int y, int button)
@@ -96,6 +96,17 @@ class WorkspaceWidget : Widget, IPropertyWatch, IMouseWatch
 	}
 
 private:
+	void changeTo(uint desktop)
+	{
+		if (desktop >= 0 && desktop < desktops.length)
+		{
+			if (x.i3.available)
+				x.i3.sendCommand("workspace " ~ desktops[desktop]);
+			else
+				x.currentWorkspace = desktop;
+		}
+	}
+
 	XBackend x;
 	string[] desktops;
 	uint currentWorkspace;
