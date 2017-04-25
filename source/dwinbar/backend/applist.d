@@ -90,10 +90,7 @@ struct AppList
 		{
 			auto idx = toRemove.countUntil!"a.value == b"(app);
 			if (idx != -1)
-			{
-				toRemove[idx] = toRemove[$ - 1];
-				toRemove.length--;
-			}
+				toRemove = toRemove.remove(idx);
 		}
 		foreach_reverse (rem; toRemove)
 			infos = infos.remove(rem.index);
