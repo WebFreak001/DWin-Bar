@@ -112,7 +112,8 @@ IFImage premultiplyReverse(IFImage image)
 void draw(ref IFImage image, FT_Bitmap bitmap, int x, int y, ubyte[4] color)
 {
 	assert(image.c == ColFmt.RGBA, "Wrong image format");
-	assert(bitmap.pitch > 0);
+	if (bitmap.pitch <= 0)
+		return;
 	int w = bitmap.width;
 	int h = bitmap.rows;
 	if (x + w < 0 || y + h < 0 || x >= image.w || y >= image.h)
