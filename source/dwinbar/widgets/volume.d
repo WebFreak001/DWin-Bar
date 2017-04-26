@@ -51,7 +51,7 @@ class VolumeWidget : Widget, IMouseWatch
 
 	override int width(bool vertical) const
 	{
-		return icons[0].w + 108;
+		return icons[0].w + 102 + 8;
 	}
 
 	override int height(bool vertical) const
@@ -71,6 +71,10 @@ class VolumeWidget : Widget, IMouseWatch
 			down = true;
 			mouseMove(vertical, mx, my);
 		}
+		else if (button == 5)
+			queueVolume(_volume - 0.01f);
+		else if (button == 4)
+			queueVolume(_volume + 0.01f);
 	}
 
 	override void mouseUp(bool vertical, int mx, int my, int button)
@@ -86,22 +90,13 @@ class VolumeWidget : Widget, IMouseWatch
 	{
 		if (down)
 		{
-			_volume = (mx - icons[0].w - 8) / 100.0f;
-			if (_volume < 0)
-				_volume = 0;
-			if (_volume > 1)
-				_volume = 1;
-			queueChange = true;
-			changeTimer.reset();
-			changeTimer.start();
-			updateVolume();
-			queueRedraw();
+			queueVolume((mx - icons[0].w - 8) / 100.0f);
 		}
 	}
 
 	override void update(Bar bar)
 	{
-		if (down)
+		if (down || queueChange)
 		{
 			if (queueChange && changeTimer.peek.to!("msecs", int) >= 50)
 			{
@@ -149,7 +144,7 @@ class VolumeWidget : Widget, IMouseWatch
 		ret.pixels[] = 0;
 
 		ret.draw(icons[_activeIcon], 0, 0);
-		ret.fillRect!4(icons[_activeIcon].w + 8, icons[_activeIcon].h / 2 - 1, 100, 1,
+		ret.fillRect!4(icons[_activeIcon].w + 8, icons[_activeIcon].h / 2 - 1, 102, 1,
 				[0xFF, 0xFF, 0xFF, 0xFF]);
 		ret.fillRect!4(icons[_activeIcon].w + 8 + cast(int)(_volume * 100), 0, 2,
 				icons[_activeIcon].h, [0xFF, 0xFF, 0xFF, 0xFF]);
@@ -158,6 +153,20 @@ class VolumeWidget : Widget, IMouseWatch
 	}
 
 private:
+	void queueVolume(float volume)
+	{
+		_volume = volume;
+		if (_volume < 0)
+			_volume = 0;
+		if (_volume > 1)
+			_volume = 1;
+		queueChange = true;
+		changeTimer.reset();
+		changeTimer.start();
+		updateVolume();
+		queueRedraw();
+	}
+
 	int _activeIcon = 0;
 	int frame = 50;
 	float _volume;
