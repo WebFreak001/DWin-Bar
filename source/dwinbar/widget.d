@@ -401,6 +401,9 @@ interface IMouseWatch
 
 interface IWindowManager
 {
-	void expose(Window window, int x, int y, int w, int h);
-	void close(Window window);
+	void windowExpose(Window window, int x, int y, int w, int h);
+	void windowClose(Window window);
+	void windowMouseDown(Window window, int x, int y, int button);
+	void windowMouseUp(Window window, int x, int y, int button);
+	void windowMouseMove(Window window, int x, int y);
 }

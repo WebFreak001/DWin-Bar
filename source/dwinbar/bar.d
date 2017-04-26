@@ -537,7 +537,7 @@ struct Bar
 									running = false;
 							auto ptr = e.xclient.window in widgetWindows;
 							if (ptr)
-								(*ptr).close(e.xclient.window);
+								(*ptr).windowClose(e.xclient.window);
 						}
 						else if (atom == XAtom[AtomName._NET_WM_PING])
 							XSendEvent(x.display, x.root, false,
@@ -561,7 +561,7 @@ struct Bar
 							}
 						auto ptr = e.xexpose.window in widgetWindows;
 						if (ptr)
-							(*ptr).expose(e.xexpose.window, e.xexpose.x, e.xexpose.y,
+							(*ptr).windowExpose(e.xexpose.window, e.xexpose.x, e.xexpose.y,
 									e.xexpose.width, e.xexpose.height);
 					}
 				}
@@ -573,6 +573,9 @@ struct Bar
 							panel.mouseMove(e.xmotion.x, e.xmotion.y);
 							break;
 						}
+					auto ptr = e.xmotion.window in widgetWindows;
+					if (ptr)
+						(*ptr).windowMouseMove(e.xmotion.window, e.xmotion.x, e.xmotion.y);
 				}
 				else if (e.type == EnterNotify)
 				{
@@ -582,6 +585,9 @@ struct Bar
 							panel.mouseMove(e.xcrossing.x, e.xcrossing.y);
 							break;
 						}
+					auto ptr = e.xcrossing.window in widgetWindows;
+					if (ptr)
+						(*ptr).windowMouseMove(e.xcrossing.window, e.xcrossing.x, e.xcrossing.y);
 				}
 				else if (e.type == LeaveNotify)
 				{
@@ -591,6 +597,9 @@ struct Bar
 							panel.unhover();
 							break;
 						}
+					auto ptr = e.xcrossing.window in widgetWindows;
+					if (ptr)
+						(*ptr).windowMouseMove(e.xcrossing.window, e.xcrossing.x, e.xcrossing.y);
 				}
 				else if (e.type == ButtonPress)
 				{
@@ -600,6 +609,9 @@ struct Bar
 							panel.mouseDown(e.xbutton.x, e.xbutton.y, e.xbutton.button);
 							break;
 						}
+					auto ptr = e.xbutton.window in widgetWindows;
+					if (ptr)
+						(*ptr).windowMouseDown(e.xbutton.window, e.xbutton.x, e.xbutton.y, e.xbutton.button);
 				}
 				else if (e.type == ButtonRelease)
 				{
@@ -609,6 +621,9 @@ struct Bar
 							panel.mouseUp(e.xbutton.x, e.xbutton.y, e.xbutton.button);
 							break;
 						}
+					auto ptr = e.xbutton.window in widgetWindows;
+					if (ptr)
+						(*ptr).windowMouseUp(e.xbutton.window, e.xbutton.x, e.xbutton.y, e.xbutton.button);
 				}
 				else if (e.type == PropertyNotify)
 				{
