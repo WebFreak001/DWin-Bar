@@ -6,6 +6,7 @@ import dwinbar.backend.xbackend;
 import derelict.freetype.ft;
 
 import std.traits;
+import std.string;
 
 public import imageformats;
 
@@ -90,6 +91,24 @@ IFImage premultiply(IFImage image)
 	return image;
 }
 
+IFImage premultiplyReverse(IFImage image)
+{
+	if (image.c != ColFmt.RGBA)
+		return image;
+	for (int y = 0; y < image.h; y++)
+		for (int x = 0; x < image.w; x++)
+		{
+			ubyte a = image.pixels[(x + y * image.w) * 4 + 3];
+			ubyte r = image.pixels[(x + y * image.w) * 4 + 0];
+			ubyte g = image.pixels[(x + y * image.w) * 4 + 1];
+			ubyte b = image.pixels[(x + y * image.w) * 4 + 2];
+			image.pixels[(x + y * image.w) * 4 + 2] = cast(ubyte)(r * a / 256);
+			image.pixels[(x + y * image.w) * 4 + 1] = cast(ubyte)(g * a / 256);
+			image.pixels[(x + y * image.w) * 4 + 0] = cast(ubyte)(b * a / 256);
+		}
+	return image;
+}
+
 void draw(ref IFImage image, FT_Bitmap bitmap, int x, int y, ubyte[4] color)
 {
 	assert(image.c == ColFmt.RGBA, "Wrong image format");
@@ -117,7 +136,8 @@ void draw(ref IFImage image, FT_Bitmap bitmap, int x, int y, ubyte[4] color)
 				ubyte a = bitmap.buffer[lx + ly * bitmap.pitch];
 				col = mix(image.pixels[(lx + x + (ly + y) * image.w) * 4 .. (lx + x + (ly + y) * image.w)
 						* 4 + 4][0 .. 4], color, a / 255.0f);
-				image.pixels[(lx + x + (ly + y) * image.w) * 4 .. (lx + x + (ly + y) * image.w) * 4 + 4] = col;
+				image.pixels[(lx + x + (ly + y) * image.w) * 4 .. (lx + x + (ly + y) * image.w) * 4 + 4] = blend(col,
+						image.pixels[(lx + x + (ly + y) * image.w) * 4 .. (lx + x + (ly + y) * image.w) * 4 + 4]);
 			}
 	else
 		throw new Exception("Unsupported bitmap format");
@@ -126,7 +146,8 @@ void draw(ref IFImage image, FT_Bitmap bitmap, int x, int y, ubyte[4] color)
 void draw(ref IFImage image, IFImage bitmap, int x, int y, int width = 0,
 		int height = 0, ubyte opacity = 255)
 {
-	assert(bitmap.c == image.c && image.c == ColFmt.RGBA, "Wrong image format");
+	assert(image.c == ColFmt.RGBA, "Wrong image format");
+	assert(bitmap.c == image.c, "Image format mismatch");
 	int w = width == 0 ? bitmap.w : width;
 	int h = height == 0 ? bitmap.h : height;
 	if (w > bitmap.w)
@@ -228,8 +249,6 @@ private ubyte[4] parseColor(char[3] hex)
 void drawFormattedText(ref IFImage image, FT_Face regular, FT_Face boldFont,
 		string text, float x, float y)
 {
-	import std.string : split;
-
 	void updatePos(float[2] ret)
 	{
 		x = ret[0];
@@ -265,6 +284,79 @@ void drawFormattedText(ref IFImage image, FT_Face regular, FT_Face boldFont,
 			}
 			updatePos(image.drawText(bold ? boldFont : regular, part[1 .. $], x, y, color));
 		}
+}
+
+struct TextLayout
+{
+	struct DrawCommand
+	{
+		float y;
+		string text;
+	}
+
+	DrawCommand[] draws;
+	float width;
+	float height = 0;
+	FT_Face face;
+
+	void draw(ref IFImage image, float x, float y, ubyte[4] color)
+	{
+		foreach (draw; draws)
+			image.drawText(face, draw.text, x, draw.y + y, color);
+	}
+
+	static TextLayout layout(string text, float width, float height, float lineHeight, FT_Face face)
+	{
+		import std.algorithm : splitter;
+
+		TextLayout ret;
+		ret.face = face;
+		ret.width = width;
+		float[2] pos;
+		foreach (line; text.lineSplitter)
+		{
+			pos = measureText(face, line);
+			if (pos[0] > width)
+			{
+				string vline;
+				foreach (word; line.splitter(' '))
+				{
+					if (vline.length)
+					{
+						pos = measureText(face, vline ~ ' ' ~ word);
+						if (pos[0] > width)
+						{
+							ret.draws ~= DrawCommand(ret.height, vline);
+							ret.height += lineHeight;
+							if (ret.height + lineHeight > height)
+							{
+								ret.draws[$ - 1].text ~= "...";
+								return ret;
+							}
+							vline = word;
+						}
+						else
+							vline ~= ' ' ~ word;
+					}
+					else
+						vline = word;
+				}
+				ret.draws ~= DrawCommand(ret.height, vline);
+				ret.height += lineHeight;
+			}
+			else
+			{
+				ret.draws ~= DrawCommand(ret.height, line);
+				ret.height += lineHeight;
+			}
+			if (ret.height + lineHeight > height)
+			{
+				ret.draws[$ - 1].text ~= "...";
+				return ret;
+			}
+		}
+		return ret;
+	}
 }
 
 abstract class Widget
@@ -304,4 +396,10 @@ interface IMouseWatch
 	void mouseDown(bool vertical, int x, int y, int button);
 	void mouseUp(bool vertical, int x, int y, int button);
 	void mouseMove(bool vertical, int x, int y);
+}
+
+interface IWindowManager
+{
+	void expose(Window window, int x, int y, int w, int h);
+	void close(Window window);
 }
