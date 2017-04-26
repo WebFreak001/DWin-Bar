@@ -9,14 +9,18 @@ import std.conv;
 
 class ClockWidget : Widget
 {
-	this()
+	this(bool showSeconds = true)
 	{
+		this.showSeconds = showSeconds;
 		clockIcon = read_image("res/icon/clock.png").premultiply;
 	}
 
 	override int width(bool) const
 	{
-		return 70 + 16;
+		if (showSeconds)
+			return 70 + 16;
+		else
+			return 50 + 16;
 	}
 
 	override int height(bool) const
@@ -43,10 +47,11 @@ class ClockWidget : Widget
 
 		auto pos = ret.drawText(bar.facePrimary, clockMajor, 0, 14,
 				cast(ubyte[4])[0xFF, 0xFF, 0xFF, 0xFF]);
-		ret.drawText(bar.faceSecondary, clockMinor, pos[0] + 2, 14,
-				cast(ubyte[4])[0xFF, 0xFF, 0xFF, 0xFF]);
+		if (showSeconds)
+			ret.drawText(bar.faceSecondary, clockMinor, pos[0] + 2, 14,
+					cast(ubyte[4])[0xFF, 0xFF, 0xFF, 0xFF]);
 
-		ret.draw(clockIcon, 70, 0);
+		ret.draw(clockIcon, ret.w - 16, 0);
 
 		return ret;
 	}
@@ -65,4 +70,5 @@ private:
 	IFImage clockIcon;
 	SysTime clockTime;
 	ubyte lastSecond;
+	bool showSeconds;
 }
