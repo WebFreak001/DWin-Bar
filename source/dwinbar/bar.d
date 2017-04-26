@@ -25,6 +25,7 @@ struct BarConfiguration
 {
 	string fontPrimary = "Roboto Medium";
 	string fontSecondary = "Roboto Light";
+	string fontNeutral = "Roboto Regular";
 	char* displayName = null;
 }
 
@@ -445,11 +446,17 @@ struct Bar
 {
 	BarConfiguration config;
 	FT_Library ft;
-	FT_Face facePrimary, faceSecondary;
+	FT_Face facePrimary, faceSecondary, faceNeutral;
 	XBackend x;
+	IWindowManager[Window] widgetWindows;
 
 	private Panel[] panels;
 	private int trayIndex = -1;
+
+	void ownWindow(Window window, IWindowManager mgr)
+	{
+		widgetWindows[window] = mgr;
+	}
 
 	ref Panel addPanel(Screen screen, Dock dock, PanelConfiguration config = PanelConfiguration.init)
 	{
@@ -457,8 +464,8 @@ struct Bar
 		panel.index = cast(int) panels.length;
 		panel.screen = screen;
 		panel.dock = dock;
-		panel.winX = 0;
-		panel.winY = x.screens[screen].height - config.height;
+		panel.winX = x.screens[screen].x;
+		panel.winY = x.screens[screen].y + x.screens[screen].height - config.height;
 
 		XSetWindowAttributes attr;
 		attr.colormap = XCreateColormap(x.display, x.rootWindow, x.visual, AllocNone);
@@ -524,7 +531,14 @@ struct Bar
 					{
 						const atom = cast(Atom) e.xclient.data.l[0];
 						if (atom == XAtom[AtomName.WM_DELETE_WINDOW])
-							running = false;
+						{
+							foreach (ref panel; panels)
+								if (panel.window == e.xclient.window)
+									running = false;
+							auto ptr = e.xclient.window in widgetWindows;
+							if (ptr)
+								(*ptr).close(e.xclient.window);
+						}
 						else if (atom == XAtom[AtomName._NET_WM_PING])
 							XSendEvent(x.display, x.root, false,
 									SubstructureNotifyMask | SubstructureRedirectMask, &e);
@@ -538,12 +552,18 @@ struct Bar
 				else if (e.type == Expose)
 				{
 					if (e.xexpose.count == 0)
+					{
 						foreach (ref panel; panels)
 							if (e.xexpose.window == panel.window)
 							{
 								panel.redraw(e.xexpose.x, e.xexpose.y, e.xexpose.width, e.xexpose.height);
 								break;
 							}
+						auto ptr = e.xexpose.window in widgetWindows;
+						if (ptr)
+							(*ptr).expose(e.xexpose.window, e.xexpose.x, e.xexpose.y,
+									e.xexpose.width, e.xexpose.height);
+					}
 				}
 				else if (e.type == MotionNotify)
 				{
@@ -619,7 +639,10 @@ struct Bar
 					}
 					else
 					{
-						if (e.xproperty.atom == XAtom[AtomName._NET_WM_USER_TIME])
+						if (e.xproperty.atom == XAtom[AtomName._NET_WM_USER_TIME]
+								|| e.xproperty.atom == XAtom[AtomName._NET_WM_ICON_NAME]
+								|| e.xproperty.atom == XAtom[AtomName.WM_ICON_NAME]
+								|| e.xproperty.atom == XAtom[AtomName._NET_WM_OPAQUE_REGION])
 						{
 						}
 						else if (e.xproperty.atom == XAtom[AtomName._NET_WM_NAME]
@@ -800,6 +823,7 @@ Bar loadBar(BarConfiguration config = BarConfiguration.init)
 	enforceFT(FT_Init_FreeType(&bar.ft));
 	loadFace(bar.ft, config.fontPrimary, &bar.facePrimary);
 	loadFace(bar.ft, config.fontSecondary, &bar.faceSecondary);
+	loadFace(bar.ft, config.fontNeutral, &bar.faceNeutral);
 
 	return bar;
 }
