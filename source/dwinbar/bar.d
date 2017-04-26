@@ -820,9 +820,10 @@ void loadFace(FT_Library lib, string font, FT_Face* face)
 	foreach (file; dirEntries("/usr/share/fonts", SpanMode.depth))
 		if (file.baseName == fontFile)
 			absPath = file;
-	foreach (file; dirEntries("~/.local/share/fonts".expandTilde, SpanMode.depth))
-		if (file.baseName == fontFile)
-			absPath = file;
+	if ("~/.local/share/fonts".expandTilde.exists)
+		foreach (file; dirEntries("~/.local/share/fonts".expandTilde, SpanMode.depth))
+			if (file.baseName == fontFile)
+				absPath = file;
 	enforceFT(FT_New_Face(lib, absPath.toStringz, 0, face));
 	enforceFT(FT_Set_Char_Size(*face, 0, 16 * 64 + 32, 0, 0));
 }
