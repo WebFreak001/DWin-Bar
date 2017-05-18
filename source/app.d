@@ -1,4 +1,5 @@
 import dwinbar.widgets.clock;
+import dwinbar.widgets.notifications;
 import dwinbar.widgets.volume;
 import dwinbar.widgets.workspace;
 
@@ -22,6 +23,7 @@ void main(string[] args)
 	//dfmt off
 	bar.addPanel(Screen.First, Dock.Bottom, panelConfig)
 		.add(new ClockWidget())
+		.add(new NotificationsWidget(&bar))
 		.add(new VolumeWidget())
 		.add(new WorkspaceWidget(bar.x, "HDMI-1"))
 	;

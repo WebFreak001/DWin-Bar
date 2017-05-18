@@ -8,7 +8,9 @@
 	"dependencies": {
 		"x11": "~>1.0.16",
 		"imageformats": "~>6.1.0",
-		"derelict-ft": "~>2.0.0-alpha.1"
+		"derelict-ft": "~>2.0.0-alpha.1",
+		"eventsystem": "~>1.2.0",
+		"ddbus": "~>2.1.0"
 	},
 	"libs": [
 		"Xinerama"
