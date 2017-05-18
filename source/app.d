@@ -11,11 +11,11 @@ import dwinbar.bar;
 void main(string[] args)
 {
 	BarConfiguration config;
-	config.fontPrimary = "Roboto Medium";
-	config.fontSecondary = "Roboto Light";
+	//config.fontPrimary = "Roboto Medium";
+	//config.fontSecondary = "Roboto Light";
 
 	PanelConfiguration panelConfig;
-	panelConfig.height = 38;
+	panelConfig.height = 32;
 
 	Bar bar = loadBar(config);
 
@@ -23,7 +23,7 @@ void main(string[] args)
 	bar.addPanel(Screen.First, Dock.Bottom, panelConfig)
 		.add(new ClockWidget())
 		.add(new VolumeWidget())
-		.add(new WorkspaceWidget(bar.x))
+		.add(new WorkspaceWidget(bar.x, "HDMI-1"))
 	;
 	//dfmt on
 

@@ -26,6 +26,7 @@ struct BarConfiguration
 	string fontPrimary = "Roboto Medium";
 	string fontSecondary = "Roboto Light";
 	string fontNeutral = "Roboto Regular";
+	string fontFallback = "NotoSans-Regular";
 	char* displayName = null;
 }
 
@@ -378,7 +379,7 @@ struct Panel
 		XChangeProperty(x.display, window, XAtom[AtomName._NET_WM_STATE], XA_ATOM,
 				32, PropModeReplace, cast(ubyte*) state.ptr, cast(int) state.length);
 
-		int[5] undecorated = [2, 0, 0, 0, 0];
+		long[5] undecorated = [2, 0, 0, 0, 0];
 		XChangeProperty(x.display, window, XAtom[AtomName._MOTIF_WM_HINTS],
 				XAtom[AtomName._MOTIF_WM_HINTS], 32, PropModeReplace, cast(ubyte*) undecorated.ptr, 5);
 
@@ -442,16 +443,29 @@ struct Panel
 	}
 }
 
+struct FontFamily
+{
+	union
+	{
+		FT_Face[4] fonts;
+		struct
+		{
+			FT_Face primary, secondary, neutral, fallback;
+		}
+	}
+}
+
 struct Bar
 {
 	BarConfiguration config;
 	FT_Library ft;
-	FT_Face facePrimary, faceSecondary, faceNeutral;
+	FontFamily fontFamily;
+
 	XBackend x;
 	IWindowManager[Window] widgetWindows;
 
-	private Panel[] panels;
-	private int trayIndex = -1;
+	Panel[] panels;
+	int trayIndex = -1;
 
 	void ownWindow(Window window, IWindowManager mgr)
 	{
@@ -475,6 +489,11 @@ struct Bar
 		panel.window = XCreateWindow(x.display, x.rootWindow, panel.winX,
 				panel.winY, panel.winWidth, panel.winHeight, 0, x.vinfo.depth,
 				InputOutput, x.visual, mask, &attr);
+
+		XClassHint classHint;
+		classHint.res_class = cast(char*) "dwin-bar".ptr;
+		classHint.res_name = cast(char*) "dwin-bar-panel".ptr;
+		XSetClassHint(x.display, panel.window, &classHint);
 
 		panel.gc = XCreateGC(x.display, panel.window, 0, null);
 
@@ -811,21 +830,30 @@ void enforceFT(FT_Error err)
 
 void loadFace(FT_Library lib, string font, FT_Face* face)
 {
-	auto fontProc = execute(["fc-match", font]);
-	if (fontProc.status != 0)
-		throw new Exception("fc-match returned non-zero");
-	auto idx = fontProc.output.indexOf(':');
-	string fontFile = fontProc.output[0 .. idx];
 	string absPath;
-	foreach (file; dirEntries("/usr/share/fonts", SpanMode.depth))
-		if (file.baseName == fontFile)
-			absPath = file;
-	if ("~/.local/share/fonts".expandTilde.exists)
-		foreach (file; dirEntries("~/.local/share/fonts".expandTilde, SpanMode.depth))
+	if (font.canFind("/"))
+		absPath = font;
+	else
+	{
+		auto fontProc = execute(["fc-match", font]);
+		if (fontProc.status != 0)
+			throw new Exception("fc-match returned non-zero");
+		auto idx = fontProc.output.indexOf(':');
+		string fontFile = fontProc.output[0 .. idx];
+		foreach (file; dirEntries("/usr/share/fonts", SpanMode.depth))
 			if (file.baseName == fontFile)
 				absPath = file;
+		if ("~/.local/share/fonts".expandTilde.exists)
+			foreach (file; dirEntries("~/.local/share/fonts".expandTilde, SpanMode.depth))
+				if (file.baseName == fontFile)
+					absPath = file;
+	}
+	import std.stdio;
+
+	writeln("Loading font from ", absPath);
 	enforceFT(FT_New_Face(lib, absPath.toStringz, 0, face));
 	enforceFT(FT_Set_Char_Size(*face, 0, 16 * 64 + 32, 0, 0));
+	enforceFT(FT_Select_Charmap(*face, FT_ENCODING_UNICODE));
 }
 
 Bar loadBar(BarConfiguration config = BarConfiguration.init)
@@ -837,9 +865,10 @@ Bar loadBar(BarConfiguration config = BarConfiguration.init)
 	bar.config = config;
 
 	enforceFT(FT_Init_FreeType(&bar.ft));
-	loadFace(bar.ft, config.fontPrimary, &bar.facePrimary);
-	loadFace(bar.ft, config.fontSecondary, &bar.faceSecondary);
-	loadFace(bar.ft, config.fontNeutral, &bar.faceNeutral);
+	loadFace(bar.ft, config.fontFallback, &bar.fontFamily.fallback);
+	loadFace(bar.ft, config.fontPrimary, &bar.fontFamily.primary);
+	loadFace(bar.ft, config.fontSecondary, &bar.fontFamily.secondary);
+	loadFace(bar.ft, config.fontNeutral, &bar.fontFamily.neutral);
 
 	return bar;
 }

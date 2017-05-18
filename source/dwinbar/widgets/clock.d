@@ -45,10 +45,10 @@ class ClockWidget : Widget
 		string clockMajor = format("%02d:%02d", clockTime.hour, clockTime.minute);
 		string clockMinor = format("%02d", clockTime.second);
 
-		auto pos = ret.drawText(bar.facePrimary, clockMajor, 0, 14,
+		auto pos = ret.drawText(bar.fontFamily, 0, clockMajor, 0, 14,
 				cast(ubyte[4])[0xFF, 0xFF, 0xFF, 0xFF]);
 		if (showSeconds)
-			ret.drawText(bar.faceSecondary, clockMinor, pos[0] + 2, 14,
+			ret.drawText(bar.fontFamily, 1, clockMinor, pos[0] + 2, 14,
 					cast(ubyte[4])[0xFF, 0xFF, 0xFF, 0xFF]);
 
 		ret.draw(clockIcon, ret.w - 16, 0);

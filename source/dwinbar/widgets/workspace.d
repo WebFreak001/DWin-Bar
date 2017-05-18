@@ -44,11 +44,11 @@ class WorkspaceWidget : Widget, IPropertyWatch, IMouseWatch
 
 		foreach (i, desktop; desktops)
 		{
-			auto font = bar.faceSecondary;
+			auto font = 1;
 			if (i == currentWorkspace)
-				font = bar.facePrimary;
-			auto size = measureText(font, desktop);
-			ret.drawText(font, desktop, i * 32 + 16 - size[0] / 2, 14,
+				font = 0;
+			auto size = measureText(bar.fontFamily, font, desktop);
+			ret.drawText(bar.fontFamily, font, desktop, i * 32 + 16 - size[0] / 2, 14,
 					cast(ubyte[4])[0xFF, 0xFF, 0xFF, 0xFF]);
 		}
 

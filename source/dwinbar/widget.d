@@ -7,6 +7,7 @@ import derelict.freetype.ft;
 
 import std.traits;
 import std.string;
+import std.utf;
 
 public import imageformats;
 
@@ -178,57 +179,71 @@ void draw(ref IFImage image, IFImage bitmap, int x, int y, int width = 0,
 		}
 }
 
-float[2] drawText(ref IFImage image, FT_Face face, string text, float x, float y, ubyte[4] color)
+float[2] drawText(ref IFImage image, FontFamily font, int fontIndex, string text,
+		float x, float y, ubyte[4] color)
 {
-	bool kerning = FT_HAS_KERNING(face);
+	FT_Face used = font.fonts[fontIndex];
+	bool kerning = FT_HAS_KERNING(used);
 	uint glyphIndex, prev;
-	foreach (c; text)
+	foreach (c; text.byDchar)
 	{
-		glyphIndex = FT_Get_Char_Index(face, cast(FT_ULong) c);
+		used = font.fonts[fontIndex];
+		glyphIndex = FT_Get_Char_Index(used, cast(FT_ULong) c);
 		if (kerning && prev && glyphIndex)
 		{
 			FT_Vector delta;
-			FT_Get_Kerning(face, prev, glyphIndex, FT_Kerning_Mode.FT_KERNING_DEFAULT, &delta);
+			FT_Get_Kerning(used, prev, glyphIndex, FT_Kerning_Mode.FT_KERNING_DEFAULT, &delta);
 			x += delta.x / 64.0f;
 			y += delta.y / 64.0f;
 		}
-		if (FT_Load_Glyph(face, glyphIndex, FT_LOAD_RENDER))
+		prev = glyphIndex;
+		if (glyphIndex == 0)
+		{
+			used = font.fonts[$ - 1];
+			glyphIndex = FT_Get_Char_Index(used, cast(FT_ULong) c);
+		}
+		if (FT_Load_Glyph(used, glyphIndex, FT_LOAD_RENDER))
 			continue;
 
-		image.draw(face.glyph.bitmap, cast(int)(x + face.glyph.bitmap_left),
-				cast(int)(y - face.glyph.bitmap_top), color);
+		image.draw(used.glyph.bitmap, cast(int)(x + used.glyph.bitmap_left),
+				cast(int)(y - used.glyph.bitmap_top), color);
 
-		x += face.glyph.advance.x / 64.0f;
-		y += face.glyph.advance.y / 64.0f;
-		prev = glyphIndex;
+		x += used.glyph.advance.x / 64.0f;
+		y += used.glyph.advance.y / 64.0f;
 	}
 	return [x, y];
 }
 
-float[2] measureText(FT_Face face, string text)
+float[2] measureText(FontFamily font, int fontIndex, string text)
 {
+	FT_Face used = font.fonts[fontIndex];
 	float x, y;
 	x = y = 0;
 	float h = 0;
-	bool kerning = FT_HAS_KERNING(face);
+	bool kerning = FT_HAS_KERNING(used);
 	uint glyphIndex, prev;
-	foreach (c; text)
+	foreach (c; text.byDchar)
 	{
-		glyphIndex = FT_Get_Char_Index(face, cast(FT_ULong) c);
+		used = font.fonts[fontIndex];
+		glyphIndex = FT_Get_Char_Index(used, cast(FT_ULong) c);
 		if (kerning && prev && glyphIndex)
 		{
 			FT_Vector delta;
-			FT_Get_Kerning(face, prev, glyphIndex, FT_Kerning_Mode.FT_KERNING_DEFAULT, &delta);
+			FT_Get_Kerning(used, prev, glyphIndex, FT_Kerning_Mode.FT_KERNING_DEFAULT, &delta);
 			x += delta.x / 64.0f;
 			y += delta.y / 64.0f;
 		}
-		if (FT_Load_Glyph(face, glyphIndex, FT_LOAD_COMPUTE_METRICS))
+		prev = glyphIndex;
+		if (glyphIndex == 0)
+		{
+			used = font.fonts[$ - 1];
+			glyphIndex = FT_Get_Char_Index(used, cast(FT_ULong) c);
+		}
+		if (FT_Load_Glyph(used, glyphIndex, FT_LOAD_COMPUTE_METRICS))
 			continue;
 
-		x += face.glyph.advance.x / 64.0f;
-		y += face.glyph.advance.y / 64.0f;
-		h = face.glyph.metrics.height > h ? face.glyph.metrics.height : h;
-		prev = glyphIndex;
+		x += used.glyph.advance.x / 64.0f;
+		y += used.glyph.advance.y / 64.0f;
 	}
 	return [x, 0];
 }
@@ -247,76 +262,39 @@ private ubyte[4] parseColor(char[3] hex)
 	return ret;
 }
 
-void drawFormattedText(ref IFImage image, FT_Face regular, FT_Face boldFont,
-		string text, float x, float y)
-{
-	void updatePos(float[2] ret)
-	{
-		x = ret[0];
-		y = ret[1];
-	}
-
-	if (!text.length)
-		return;
-
-	auto parts = text.split('$');
-	ubyte[4] color;
-	color[3] = 0xFF;
-	bool bold;
-	updatePos(image.drawText(regular, parts[0], x, y, color));
-	if (parts.length > 1)
-		foreach (part; parts[1 .. $])
-		{
-			if (!part.length)
-				continue;
-			if (part[0] == 'l')
-				bold = true;
-			else if (part[0] == 'r')
-			{
-				bold = false;
-				color[] = 0;
-				color[3] = 0xFF;
-			}
-			else if (part.length >= 3)
-			{
-				color = parseColor(part[0 .. 3]);
-				updatePos(image.drawText(bold ? boldFont : regular, part[3 .. $], x, y, color));
-				continue;
-			}
-			updatePos(image.drawText(bold ? boldFont : regular, part[1 .. $], x, y, color));
-		}
-}
-
 struct TextLayout
 {
 	struct DrawCommand
 	{
 		float y;
+		int font;
 		string text;
 	}
 
 	DrawCommand[] draws;
 	float width;
 	float height = 0;
-	FT_Face face;
+	FontFamily family;
 
 	void draw(ref IFImage image, float x, float y, ubyte[4] color)
 	{
 		foreach (draw; draws)
-			image.drawText(face, draw.text, x, draw.y + y, color);
+			image.drawText(family, draw.font, draw.text, x, draw.y + y, color);
 	}
 
-	static TextLayout layout(string text, float width, float height, float lineHeight, FT_Face face)
+	static TextLayout layout(string text, float width, float height,
+			float lineHeight, FontFamily family, int defaultFont)
 	{
 		import std.algorithm : splitter;
 
 		TextLayout ret;
-		ret.face = face;
+		ret.family = family;
 		ret.width = width;
+		int currentFont = defaultFont;
 		float[2] pos;
 		foreach (line; text.lineSplitter)
 		{
-			pos = measureText(face, line);
+			pos = measureText(family, currentFont, line);
 			if (pos[0] > width)
 			{
 				string vline;
@@ -324,10 +302,10 @@ struct TextLayout
 				{
 					if (vline.length)
 					{
-						pos = measureText(face, vline ~ ' ' ~ word);
+						pos = measureText(family, currentFont, vline ~ ' ' ~ word);
 						if (pos[0] > width)
 						{
-							ret.draws ~= DrawCommand(ret.height, vline);
+							ret.draws ~= DrawCommand(ret.height, currentFont, vline);
 							ret.height += lineHeight;
 							if (ret.height + lineHeight > height)
 							{
@@ -342,12 +320,12 @@ struct TextLayout
 					else
 						vline = word;
 				}
-				ret.draws ~= DrawCommand(ret.height, vline);
+				ret.draws ~= DrawCommand(ret.height, currentFont, vline);
 				ret.height += lineHeight;
 			}
 			else
 			{
-				ret.draws ~= DrawCommand(ret.height, line);
+				ret.draws ~= DrawCommand(ret.height, currentFont, line);
 				ret.height += lineHeight;
 			}
 			if (ret.height + lineHeight > height)
