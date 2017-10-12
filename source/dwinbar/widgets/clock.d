@@ -40,7 +40,6 @@ class ClockWidget : Widget
 		ret.h = height(vertical);
 		ret.c = ColFmt.RGBA;
 		ret.pixels.length = ret.w * ret.h * ret.c;
-		ret.pixels[] = 0;
 
 		string clockMajor = format("%02d:%02d", clockTime.hour, clockTime.minute);
 		string clockMinor = format("%02d", clockTime.second);
