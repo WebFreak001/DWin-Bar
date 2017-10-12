@@ -1,3 +1,4 @@
+import dwinbar.widgets.battery;
 import dwinbar.widgets.clock;
 import dwinbar.widgets.notifications;
 import dwinbar.widgets.volume;
@@ -23,6 +24,8 @@ void main(string[] args)
 	//dfmt off
 	bar.addPanel(Screen.First, Dock.Bottom, panelConfig)
 		.add(new ClockWidget())
+		// find using `dbus-send --print-reply --system --dest=org.freedesktop.UPower /org/freedesktop/UPower org.freedesktop.UPower.EnumerateDevices`
+		.add(new BatteryWidget(bar.fontFamily, "/org/freedesktop/UPower/devices/battery_BAT1"))
 		.add(new NotificationsWidget(&bar))
 		.add(new VolumeWidget())
 		.add(new WorkspaceWidget(bar.x, "HDMI-1"))
