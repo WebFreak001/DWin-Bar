@@ -1,14 +1,12 @@
 module dwinbar.widgets.notifications;
 
+import dwinbar.backend.dbus;
 import dwinbar.backend.xbackend;
 import dwinbar.backend.icongen;
 import dwinbar.widget;
 import dwinbar.bar;
 
 import derelict.freetype.ft;
-
-import ddbus;
-import ddbus.c_lib;
 
 import std.algorithm;
 import std.array;
@@ -374,15 +372,15 @@ class NotificationsWidget : Widget, IWindowManager
 		x = bar.x;
 		notificationIcon = read_image("res/icon/bell-outline.png").premultiply;
 		unreadNotificationIcon = read_image("res/icon/bell-ring.png").premultiply;
-		conn = connectToBus();
+		sessionBus.attach();
 		router = new MessageRouter();
 		dbus = new NotificationServer(bar);
 		dbus.onWindowOpen ~= &onWindowOpen;
 		registerMethods(router, "/org/freedesktop/Notifications",
 				"org.freedesktop.Notifications", dbus);
 		std.stdio.writeln(router.callTable.byKey);
-		registerRouter(conn, router);
-		enforce(requestName(conn, "org.freedesktop.Notifications"));
+		registerRouter(sessionBus.conn, router);
+		enforce(requestName(sessionBus.conn, "org.freedesktop.Notifications"));
 	}
 
 	override int width(bool) const
@@ -411,8 +409,7 @@ class NotificationsWidget : Widget, IWindowManager
 		int msecs = frameTimer.peek.to!("msecs", int);
 		frameTimer.reset();
 		frameTimer.start();
-		if (!dbus_connection_read_write_dispatch(conn.conn, 0))
-			throw new Exception("tick break");
+		updateDBus();
 		foreach (ref notification; dbus.all)
 		{
 			if (notification.visible && !notification.deffered && notification.timeout > 0)
@@ -487,6 +484,5 @@ private:
 	StopWatch frameTimer;
 	NotificationServer dbus;
 	MessageRouter router;
-	Connection conn;
 	IFImage notificationIcon, unreadNotificationIcon;
 }
