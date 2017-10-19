@@ -19,53 +19,6 @@ import std.uni;
 
 import tinyevent;
 
-struct ImageRange
-{
-	IFImage[] images;
-	int[] steps;
-
-	void loadAll(string prefix)
-	{
-		auto dir = prefix.dirName;
-		foreach (file; dirEntries(dir, SpanMode.shallow))
-		{
-			if (file.baseName.startsWith(prefix.baseName))
-			{
-				auto suffix = file.stripExtension.baseName[prefix.baseName.length .. $];
-				if (suffix.all!isNumber)
-					loadAppend(file, suffix.to!uint);
-			}
-		}
-	}
-
-	void loadAppend(string file, int n)
-	{
-		auto insertAt = assumeSorted(steps).lowerBound(n).length;
-		steps = steps[0 .. insertAt] ~ n ~ steps[insertAt .. $];
-		images = images[0 .. insertAt] ~ read_image(file).premultiply ~ images[insertAt .. $];
-	}
-
-	IFImage imageFor(int step)
-	{
-		assert(images.length);
-		assert(images.length == steps.length);
-		if (step <= steps[0])
-			return images[0];
-		if (step >= steps[$ - 1])
-			return images[$ - 1];
-		auto parts = assumeSorted(steps).trisect(step);
-		if (parts[1].length)
-			return images[parts[0].length];
-		if (!parts[0].length)
-			return images[0];
-		if (!parts[2].length)
-			return images[$ - 1];
-		int stepA = parts[0][$ - 1];
-		int stepB = parts[2][0];
-		return stepA < stepB ? images[parts[0].length - 1] : images[parts[0].length];
-	}
-}
-
 class BatteryWidget : Widget
 {
 	this(FontFamily font, string batteryDevice)
