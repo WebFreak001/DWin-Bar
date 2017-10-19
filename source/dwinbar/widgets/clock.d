@@ -9,9 +9,10 @@ import std.conv;
 
 class ClockWidget : Widget
 {
-	this(bool showSeconds = true)
+	this(bool showSeconds = true, bool secondsColon = false)
 	{
 		this.showSeconds = showSeconds;
+		this.secondsColon = secondsColon;
 		clockIcon = read_image("res/icon/clock.png").premultiply;
 	}
 
@@ -42,12 +43,12 @@ class ClockWidget : Widget
 		ret.pixels.length = ret.w * ret.h * ret.c;
 
 		string clockMajor = format("%02d:%02d", clockTime.hour, clockTime.minute);
-		string clockMinor = format("%02d", clockTime.second);
+		string clockMinor = format(secondsColon ? ":%02d" : "%02d", clockTime.second);
 
 		auto pos = ret.drawText(bar.fontFamily, 0, clockMajor, 0, 14,
 				cast(ubyte[4])[0xFF, 0xFF, 0xFF, 0xFF]);
 		if (showSeconds)
-			ret.drawText(bar.fontFamily, 1, clockMinor, pos[0] + 2, 14,
+			ret.drawText(bar.fontFamily, 1, clockMinor, pos[0] + (secondsColon ? 0 : 2), 14,
 					cast(ubyte[4])[0xFF, 0xFF, 0xFF, 0xFF]);
 
 		ret.draw(clockIcon, ret.w - 16, 0);
@@ -69,5 +70,5 @@ private:
 	IFImage clockIcon;
 	SysTime clockTime;
 	ubyte lastSecond;
-	bool showSeconds;
+	bool showSeconds, secondsColon;
 }
