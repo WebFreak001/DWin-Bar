@@ -23,9 +23,9 @@ import dwinbar.backend.applist;
 
 struct BarConfiguration
 {
-	string fontPrimary = "Roboto Medium";
-	string fontSecondary = "Roboto Light";
-	string fontNeutral = "Roboto Regular";
+	string fontPrimary = "Roboto-Medium";
+	string fontSecondary = "Roboto-Light";
+	string fontNeutral = "Roboto-Regular";
 	string fontFallback = "NotoSans-Regular";
 	char* displayName = null;
 }
