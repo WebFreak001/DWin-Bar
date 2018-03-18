@@ -8,33 +8,49 @@ import dwinbar.bar;
 import x11.Xlib;
 import x11.X;
 
+import std.conv;
 import std.datetime;
 import std.format;
-import std.conv;
-import std.regex;
-import std.process;
 import std.math;
+import std.process;
+import std.regex;
+import std.string;
 
 static import std.stdio;
 
-enum volumeFinder = ctRegex!`\[(\d+)%\] \[(on|off)\]`;
 float getVolume()
 {
-	auto result = execute(["amixer", "sget", "Master"]);
+	auto result = execute(["pamixer", "--get-volume"]);
 	if (result.status != 0)
 		return -2;
-	auto match = result.output.matchFirst(volumeFinder);
-	if (!match)
-		return -2;
-	float ret = match[1].to!int / 100.0f;
-	if (match[2] == "off")
+	float ret = result.output.strip.to!int / 100.0f;
+	if (execute(["pamixer", "--get-mute"]).output.strip == "true")
 		return -ret;
-	return ret;
+	else
+		return ret;
 }
 
 void setVolume(float volume)
 {
-	execute(["amixer", "set", "Master", (cast(int)(volume * 100)).to!string ~ "%"]);
+	execute(["pamixer", "--unmute", "--set-volume", (cast(int)(volume * 100)).to!string]);
+}
+
+void setMute()
+{
+	execute(["pamixer", "--mute"]);
+}
+
+void setUnmute()
+{
+	execute(["pamixer", "--unmute"]);
+}
+
+void toggleMute()
+{
+	if (execute(["pamixer", "--get-mute"]).output.strip == "true")
+		setUnmute();
+	else
+		setMute();
 }
 
 class VolumeWidget : Widget, IMouseWatch
@@ -68,6 +84,12 @@ class VolumeWidget : Widget, IMouseWatch
 	{
 		if (button == 1)
 		{
+			if (mx < icons[$ - 1].w + 4)
+			{
+				frame = 50;
+				toggleMute();
+				return;
+			}
 			down = true;
 			mouseMove(vertical, mx, my);
 		}
@@ -146,7 +168,7 @@ class VolumeWidget : Widget, IMouseWatch
 		ret.draw(icons[_activeIcon], 0, 0);
 		ret.fillRect!4(icons[_activeIcon].w + 8, icons[_activeIcon].h / 2 - 1, 102, 1,
 				[0xFF, 0xFF, 0xFF, 0xFF]);
-		ret.fillRect!4(icons[_activeIcon].w + 8 + cast(int)(_volume * 100), 0, 2,
+		ret.fillRect!4(icons[_activeIcon].w + 8 + cast(int)(abs(_volume) * 100), 0, 2,
 				icons[_activeIcon].h, [0xFF, 0xFF, 0xFF, 0xFF]);
 
 		return ret;
