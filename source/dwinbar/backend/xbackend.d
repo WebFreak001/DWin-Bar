@@ -161,7 +161,6 @@ class XBackend
 		{
 			XAtom[name] = XInternAtom(_display, name.toStringz(), false);
 			assert(XAtom[name], "No such atom: " ~ name);
-			debug std.stdio.writeln("Atom ", XAtom[name], " = ", name);
 		}
 
 		XSetErrorHandler(cast(XErrorHandler)(&errorHandler));
