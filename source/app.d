@@ -13,8 +13,8 @@ import dwinbar.bar;
 void main(string[] args)
 {
 	BarConfiguration config;
-	config.fontPrimary = "Roboto Medium";
-	config.fontSecondary = "Roboto Light";
+	config.fontPrimary = "Roboto-Medium";
+	config.fontSecondary = "Roboto-Light";
 
 	PanelConfiguration panelConfig;
 	panelConfig.height = 32;
