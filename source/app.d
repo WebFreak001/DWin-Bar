@@ -13,8 +13,8 @@ import dwinbar.bar;
 void main(string[] args)
 {
 	BarConfiguration config;
-	//config.fontPrimary = "Roboto Medium";
-	//config.fontSecondary = "Roboto Light";
+	config.fontPrimary = "Roboto Medium";
+	config.fontSecondary = "Roboto Light";
 
 	PanelConfiguration panelConfig;
 	panelConfig.height = 32;
@@ -25,11 +25,15 @@ void main(string[] args)
 	bar.addPanel(Screen.First, Dock.Bottom, panelConfig)
 		.add(new ClockWidget())
 		// find using `dbus-send --print-reply --system --dest=org.freedesktop.UPower /org/freedesktop/UPower org.freedesktop.UPower.EnumerateDevices`
-		.add(new BatteryWidget(bar.fontFamily, "/org/freedesktop/UPower/devices/battery_BAT1"))
-		.add(new NotificationsWidget(&bar))
-		.add(new VolumeWidget())
+		//.add(new BatteryWidget(bar.fontFamily, "/org/freedesktop/UPower/devices/battery_BAT1"))
+		//.add(new NotificationsWidget(&bar))
+		//.add(new VolumeWidget())
 		.add(new WorkspaceWidget(bar.x, "HDMI-1"))
 	;
+	/+bar.addPanel(Screen.Second, Dock.Bottom, panelConfig)
+		.add(new ClockWidget())
+		.add(new WorkspaceWidget(bar.x, "DP-1"))
+	;+/
 	//dfmt on
 
 	//bar.tray = panel1;
