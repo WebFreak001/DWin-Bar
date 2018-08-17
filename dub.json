@@ -1,16 +1,16 @@
 {
 	"name": "dwin-bar",
-	"description": "A minimal D application.",
-	"copyright": "Copyright © 2016, webfreak",
+	"description": "A customizable bar for linux.",
+	"copyright": "Copyright © 2016-2018, webfreak",
 	"authors": [
 		"webfreak"
 	],
 	"dependencies": {
-		"x11": "~>1.0.16",
-		"imageformats": "~>6.1.0",
-		"derelict-ft": "~>2.0.0-alpha.1",
+		"x11": "~>1.0.20",
+		"imageformats": "~>7.0.0",
+		"derelict-ft": "~>2.0.0-beta.4",
 		"eventsystem": "~>1.2.0",
-		"ddbus": "~>2.1.0"
+		"ddbus": "~>2.3.0"
 	},
 	"libs": [
 		"Xinerama"

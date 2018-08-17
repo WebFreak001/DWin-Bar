@@ -23,10 +23,10 @@ import dwinbar.backend.applist;
 
 struct BarConfiguration
 {
-	string fontPrimary = "Roboto-Medium";
-	string fontSecondary = "Roboto-Light";
-	string fontNeutral = "Roboto-Regular";
-	string fontFallback = "NotoSans-Regular";
+	string fontPrimary = "Roboto:Medium";
+	string fontSecondary = "Roboto:Light";
+	string fontNeutral = "Roboto:Regular";
+	string fontFallback = "NotoSans:Regular";
 	char* displayName = null;
 }
 
@@ -105,6 +105,11 @@ struct WidgetManager
 		x = width - config.barBaselinePadding;
 		foreach (ref widget; widgets)
 		{
+			if (widget.w <= 0)
+			{
+				widget.x = x;
+				continue;
+			}
 			widget.x = x - widget.w;
 			x -= widget.w + config.widgetBaselineMargin;
 		}
@@ -119,7 +124,8 @@ struct WidgetManager
 		positioned.x = x - positioned.w;
 		positioned.y = (height - positioned.h) / 2;
 		widgets ~= positioned;
-		x -= positioned.w + config.widgetBaselineMargin;
+		if (positioned.w > 0)
+			x -= positioned.w + config.widgetBaselineMargin;
 	}
 
 	bool vertical;
@@ -133,7 +139,7 @@ struct WidgetManager
 enum dPanelName = "dwin-bar";
 char* panelName = cast(char*)(dPanelName ~ '\0').ptr;
 
-struct Panel
+class Panel
 {
 	int index;
 	Screen screen;
@@ -323,6 +329,8 @@ struct Panel
 				else if (updateAll)
 					widgets.regen();
 				widget.h = widget.widget.height(widgets.vertical);
+				if (widget.w <= 0)
+					continue;
 				bool hovered = widget.isHovered(mouseX, config.widgetBaselineMargin);
 				auto texture = widget.redraw(widgets.vertical, bar, hovered);
 				assert(texture.w <= widget.w && texture.h <= widget.h);
@@ -333,7 +341,8 @@ struct Panel
 							0x20, 0x20, 0xB0] : [0, 0, 0, 0xB0]);
 				}
 				else
-					background.fillRect!4(widget.x, widget.y, widget.w, widget.h, [0, 0, 0, 0xB0]);
+					background.fillRect!4(widget.x - config.widgetBaselineMargin / 2, 0,
+							widget.w + config.widgetBaselineMargin, height, [0, 0, 0, 0xB0]);
 				background.draw(texture, widget.x, widget.y);
 				XPutImage(x.display, window, gc, backgroundImage,
 						widget.x - config.widgetBaselineMargin / 2, 0, widget.x - config.widgetBaselineMargin / 2,
@@ -434,7 +443,7 @@ struct Panel
 				XA_CARDINAL, 32, PropModeReplace, cast(ubyte*) strut.ptr, 12);
 	}
 
-	ref Panel add(Widget widget)
+	Panel add(Widget widget)
 	{
 		if (cast(IPropertyWatch) widget)
 			propertyWatchers ~= cast(IPropertyWatch) widget;
@@ -472,9 +481,9 @@ struct Bar
 		widgetWindows[window] = mgr;
 	}
 
-	ref Panel addPanel(Screen screen, Dock dock, PanelConfiguration config = PanelConfiguration.init)
+	Panel addPanel(Screen screen, Dock dock, PanelConfiguration config = PanelConfiguration.init)
 	{
-		Panel panel = Panel(x, false, x.screens[screen].width, config);
+		Panel panel = new Panel(x, false, x.screens[screen].width, config);
 		panel.index = cast(int) panels.length;
 		panel.screen = screen;
 		panel.dock = dock;

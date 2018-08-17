@@ -7,7 +7,7 @@ struct ConnectionPool
 {
 	DBusBusType type;
 
-	this (DBusBusType type)
+	this(DBusBusType type)
 	{
 		this.type = type;
 	}

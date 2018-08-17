@@ -7,7 +7,7 @@ import dwinbar.bar;
 import std.algorithm;
 import std.array;
 import std.conv;
-import std.datetime;
+import std.datetime.stopwatch;
 import std.exception;
 import std.file;
 import std.math;
@@ -83,7 +83,7 @@ class BatteryWidget : Widget
 
 	override void update(Bar bar)
 	{
-		if (updateClock.peek.msecs <= 400)
+		if (updateClock.peek <= 400.msecs)
 			return;
 		updateClock.reset();
 		updateDBus();
