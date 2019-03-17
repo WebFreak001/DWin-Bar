@@ -1,9 +1,12 @@
 import dwinbar.widgets.battery;
+import dwinbar.widgets.phone_battery;
 import dwinbar.widgets.clock;
 import dwinbar.widgets.mediaplayer;
 import dwinbar.widgets.notifications;
 import dwinbar.widgets.volume;
 import dwinbar.widgets.workspace;
+
+import dwinbar.kdeconnect;
 
 /*import dwinbar.widgets.volume;
 import dwinbar.widgets.tray;
@@ -25,6 +28,8 @@ void main(string[] args)
 	string left = args.length > 1 ? args[1] : null;
 	string right = args.length > 2 ? args[2] : null;
 
+	auto phones = KDEConnectDevice.listDevices();
+
 	//dfmt off
 	auto panel1 = bar.addPanel(Screen.First, Dock.Bottom, panelConfig)
 		.add(new ClockWidget())
@@ -35,6 +40,9 @@ void main(string[] args)
 		.add(new MprisMediaPlayerWidget(bar.fontFamily, "org.mpris.MediaPlayer2.spotify"))
 		//.add(new WorkspaceWidget(bar.x, "DisplayPort-1"))
 	;
+	if (phones.length)
+		panel1.add(new PhoneBatteryWidget(bar.fontFamily, phones[0]));
+
 	if (left.length)
 		panel1.add(new WorkspaceWidget(bar.x, left));
 

@@ -21,6 +21,11 @@ import tinyevent;
 
 class BatteryWidget : Widget
 {
+	this(FontFamily font)
+	{
+		this.font = font;
+	}
+
 	this(FontFamily font, string batteryDevice)
 	{
 		this.font = font;
@@ -32,12 +37,13 @@ class BatteryWidget : Widget
 		chargingIcon.loadAll("res/icon/battery-charging-");
 		if (!batteryIcon.images.length)
 			throw new Exception("No battery icons found");
+		unknownIcon = batteryIcon.imageFor(0);
 		updateClock.start();
 	}
 
 	override int width(bool) const
 	{
-		return 17 + cast(int) ceil(measureText(cast() font, 1, batteryLevel.to!string)[0]);
+		return 18 + cast(int) ceil(measureText(cast() font, 1, batteryLevel.to!string)[0]);
 	}
 
 	override int height(bool) const
@@ -68,8 +74,10 @@ class BatteryWidget : Widget
 			icon = batteryFullIcon;
 			break;
 		case BatteryState.empty:
-		case BatteryState.unknown:
 			icon = batteryIcon.imageFor(0);
+			break;
+		case BatteryState.unknown:
+			icon = unknownIcon;
 			break;
 		default:
 			icon = batteryIcon.imageFor(batteryLevel);
@@ -111,13 +119,13 @@ class BatteryWidget : Widget
 		}
 	}
 
-private:
+protected:
 	FontFamily font;
 	PathIface batteryInterface;
 	BatteryState batteryState;
 	int batteryLevel;
 	int animatedBatteryLevel;
-	IFImage batteryFullIcon;
+	IFImage batteryFullIcon, unknownIcon;
 	ImageRange batteryIcon, chargingIcon;
 	StopWatch updateClock;
 }
