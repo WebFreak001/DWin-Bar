@@ -186,6 +186,7 @@ class MprisMediaPlayerWidget : Widget, IMouseWatch
 
 	void mouseDown(bool vertical, int x, int y, int button)
 	{
+		if (button != 1) return;
 		try
 		{
 			if (x < 24)
