@@ -23,17 +23,48 @@ import tinyevent;
 
 class PhoneBatteryWidget : BatteryWidget
 {
+	this()
+	{
+	}
+
 	this(FontFamily font, KDEConnectDevice device)
 	{
 		super(font);
 		this.device = device;
+		loadIcons();
+		updateClock.start();
+	}
+
+	override void loadBase(WidgetConfig config)
+	{
+		this.font = config.bar.fontFamily;
+		devices = KDEConnectDevice.listDevices;
+		if (devices.length)
+			device = devices[0];
+		loadIcons();
+		updateClock.start();
+	}
+
+	override bool setProperty(string property, Json value)
+	{
+		switch (property)
+		{
+		case "device":
+			device = devices[value.to!int];
+			return true;
+		default:
+			return false;
+		}
+	}
+
+	override void loadIcons()
+	{
 		unknownIcon = read_image("res/icon/cellphone-erase.png").premultiply;
 		batteryFullIcon = read_image("res/icon/battery-charging-full.png").premultiply;
 		batteryIcon.loadAll("res/icon/battery-");
 		chargingIcon.loadAll("res/icon/battery-charging-");
 		if (!batteryIcon.images.length)
 			throw new Exception("No battery icons found");
-		updateClock.start();
 	}
 
 	override void update(Bar bar)
@@ -105,5 +136,6 @@ class PhoneBatteryWidget : BatteryWidget
 
 private:
 	int tick = 25;
+	KDEConnectDevice[] devices;
 	KDEConnectDevice device;
 }

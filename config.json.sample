@@ -1,0 +1,41 @@
+{
+	"fontPrimary": "Roboto:Medium",
+	"fontSecondary": "Roboto:Light",
+	"height": 32,
+	"spotify": { // or omit this block
+		"clientId": "<obtain from spotify>",
+		"clientSecret": "<obtain from spotify>",
+		"redirectURL": "http://127.0.0.1:3007/spotify/auth"
+	},
+	"panels": [
+		{
+			"screen": "First",
+			"dock": "Bottom",
+			"widgets": [
+				"dwinbar.widgets.clock.ClockWidget",
+				"dwinbar.widgets.volume.VolumeWidget",
+				{
+					"type": "dwinbar.widgets.mediaplayer.MprisMediaPlayerWidget",
+					"dest": "org.mpris.MediaPlayer2.spotify",
+					"spotify": true
+				},
+				"dwinbar.widgets.phone_battery.PhoneBatteryWidget",
+				{
+					"type": "dwinbar.widgets.workspace.WorkspaceWidget",
+					"display": "DisplayPort-0"
+				}
+			]
+		},
+		{
+			"screen": "Second",
+			"dock": "Bottom",
+			"widgets": [
+				"dwinbar.widgets.clock.ClockWidget",
+				{
+					"type": "dwinbar.widgets.workspace.WorkspaceWidget",
+					"display": "DisplayPort-1"
+				}
+			]
+		}
+	]
+}

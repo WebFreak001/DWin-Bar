@@ -9,7 +9,14 @@ import std.conv;
 
 class ClockWidget : Widget
 {
-	this(bool showSeconds = true, bool secondsColon = false)
+	this()
+	{
+		this.showSeconds = true;
+		this.secondsColon = true;
+		clockIcon = read_image("res/icon/clock.png").premultiply;
+	}
+
+	this(bool showSeconds, bool secondsColon = false)
 	{
 		this.showSeconds = showSeconds;
 		this.secondsColon = secondsColon;
@@ -48,8 +55,8 @@ class ClockWidget : Widget
 		auto pos = ret.drawText(bar.fontFamily, 0, clockMajor, 0, 14,
 				cast(ubyte[4])[0xFF, 0xFF, 0xFF, 0xFF]);
 		if (showSeconds)
-			ret.drawText(bar.fontFamily, 1, clockMinor, pos[0] + (secondsColon ? 0 : 2), 14,
-					cast(ubyte[4])[0xFF, 0xFF, 0xFF, 0xFF]);
+			ret.drawText(bar.fontFamily, 1, clockMinor, pos[0] + (secondsColon ? 0 : 2),
+					14, cast(ubyte[4])[0xFF, 0xFF, 0xFF, 0xFF]);
 
 		ret.draw(clockIcon, ret.w - 16, 0);
 

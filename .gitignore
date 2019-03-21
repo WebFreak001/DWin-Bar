@@ -6,3 +6,6 @@ __dummy.html
 dub.selections.json
 dwin-bar
 .vscode/
+/config.json
+/nohup.out
+/spotify-auth.json

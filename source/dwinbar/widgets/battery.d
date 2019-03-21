@@ -21,6 +21,10 @@ import tinyevent;
 
 class BatteryWidget : Widget
 {
+	this()
+	{
+	}
+
 	this(FontFamily font)
 	{
 		this.font = font;
@@ -29,16 +33,45 @@ class BatteryWidget : Widget
 	this(FontFamily font, string batteryDevice)
 	{
 		this.font = font;
-		systemBus.attach();
-		batteryInterface = new PathIface(systemBus.conn, "org.freedesktop.UPower",
-				batteryDevice, "org.freedesktop.DBus.Properties");
+		loadIcons();
+		setDevice(batteryDevice);
+		updateClock.start();
+	}
+
+	void loadIcons()
+	{
 		batteryFullIcon = read_image("res/icon/battery-charging-full.png").premultiply;
 		batteryIcon.loadAll("res/icon/battery-");
 		chargingIcon.loadAll("res/icon/battery-charging-");
 		if (!batteryIcon.images.length)
 			throw new Exception("No battery icons found");
 		unknownIcon = batteryIcon.imageFor(0);
+	}
+
+	void setDevice(string device)
+	{
+		systemBus.attach();
+		batteryInterface = new PathIface(systemBus.conn, "org.freedesktop.UPower",
+				device, "org.freedesktop.DBus.Properties");
+	}
+
+	override void loadBase(WidgetConfig config)
+	{
+		this.font = config.bar.fontFamily;
 		updateClock.start();
+	}
+
+	override bool setProperty(string property, Json value)
+	{
+		switch (property)
+		{
+		case "batteryDevice":
+		case "device":
+			setDevice(value.to!string);
+			return true;
+		default:
+			return false;
+		}
 	}
 
 	override int width(bool) const

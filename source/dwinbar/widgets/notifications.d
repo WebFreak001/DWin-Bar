@@ -148,8 +148,9 @@ struct Notification
 
 		XSelectInput(x.display, window, ExposureMask | ButtonPressMask);
 
-		XSetWMProtocols(x.display, window, [XAtom[AtomName.WM_DELETE_WINDOW],
-				XAtom[AtomName._NET_WM_PING]].ptr, 2);
+		XSetWMProtocols(x.display, window, [
+				XAtom[AtomName.WM_DELETE_WINDOW], XAtom[AtomName._NET_WM_PING]
+				].ptr, 2);
 
 		XSetWindowBackground(x.display, window, 0);
 
@@ -275,8 +276,10 @@ class NotificationServer
 
 	string[] GetCapabilities()
 	{
-		return ["action-icons", "actions", "body", "body-hyperlinks", "body-images",
-			"body-markup", "icon-multi", "icon-static", "persistence", "sound"];
+		return [
+			"action-icons", "actions", "body", "body-hyperlinks", "body-images",
+			"body-markup", "icon-multi", "icon-static", "persistence", "sound"
+		];
 	}
 
 	uint Notify(string app_name, uint replaces_id, string app_icon, string summary,
@@ -366,7 +369,21 @@ private:
 
 class NotificationsWidget : Widget, IWindowManager
 {
+	this()
+	{
+	}
+
 	this(Bar* bar)
+	{
+		loadBar(bar);
+	}
+
+	override void loadBase(WidgetConfig config)
+	{
+		loadBar(config.bar);
+	}
+
+	private void loadBar(Bar* bar)
 	{
 		this.bar = bar;
 		x = bar.x;

@@ -11,11 +11,34 @@ import std.conv;
 
 class WorkspaceWidget : Widget, IPropertyWatch, IMouseWatch
 {
+	this()
+	{
+	}
+
 	this(XBackend x, string limitDesktops = null)
 	{
 		this.x = x;
 		this.limitDesktops = limitDesktops;
 		refreshDesktops();
+	}
+
+	override void loadBase(WidgetConfig config)
+	{
+		this.x = config.bar.x;
+		refreshDesktops();
+	}
+
+	override bool setProperty(string property, Json value)
+	{
+		switch (property)
+		{
+		case "limitDesktops":
+		case "display":
+			limitDesktops = value.to!string;
+			return true;
+		default:
+			return false;
+		}
 	}
 
 	override int width(bool) const

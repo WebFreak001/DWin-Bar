@@ -16,6 +16,8 @@ import std.traits;
 import std.utf;
 import std.uni;
 
+public import vibe.data.json;
+
 public import imageformats;
 
 ubyte[n] mix(ubyte n, F)(ubyte[n] a, ubyte[n] b, F fac)
@@ -392,6 +394,12 @@ struct ImageRange
 	}
 }
 
+struct WidgetConfig
+{
+	Bar* bar;
+	PanelConfiguration panel;
+}
+
 abstract class Widget
 {
 	abstract int width(bool vertical) const;
@@ -413,6 +421,15 @@ abstract class Widget
 	final bool requiresRedraw() @property const
 	{
 		return _queueRedraw;
+	}
+
+	void loadBase(WidgetConfig config)
+	{
+	}
+
+	bool setProperty(string property, Json value)
+	{
+		return false;
 	}
 
 private:
