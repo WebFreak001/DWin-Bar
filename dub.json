@@ -10,7 +10,7 @@
 		"imageformats": "~>7.0.0",
 		"derelict-ft": "~>2.0.0-beta.4",
 		"eventsystem": "~>1.2.0",
-		"ddbus": "~>2.3.0",
+		"ddbus": {"path":"ddbus"},
 		"vibe-d": "~>0.8.5-rc.1"
 	},
 	"libs": [

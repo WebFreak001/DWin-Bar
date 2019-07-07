@@ -1,0 +1,3 @@
+[submodule "ddbus"]
+	path = ddbus
+	url = https://github.com/WebFreak001/ddbus.git
