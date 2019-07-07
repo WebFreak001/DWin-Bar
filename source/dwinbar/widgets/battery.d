@@ -30,7 +30,7 @@ class BatteryWidget : Widget
 		this.font = font;
 	}
 
-	this(FontFamily font, string batteryDevice)
+	this(FontFamily font, ObjectPath batteryDevice)
 	{
 		this.font = font;
 		loadIcons();
@@ -48,11 +48,11 @@ class BatteryWidget : Widget
 		unknownIcon = batteryIcon.imageFor(0);
 	}
 
-	void setDevice(string device)
+	void setDevice(ObjectPath device)
 	{
 		systemBus.attach();
-		batteryInterface = new PathIface(systemBus.conn, "org.freedesktop.UPower",
-				device, "org.freedesktop.DBus.Properties");
+		batteryInterface = new PathIface(systemBus.conn, busName("org.freedesktop.UPower"),
+				device, interfaceName("org.freedesktop.DBus.Properties"));
 	}
 
 	override void loadBase(WidgetConfig config)
@@ -67,7 +67,7 @@ class BatteryWidget : Widget
 		{
 		case "batteryDevice":
 		case "device":
-			setDevice(value.to!string);
+			setDevice(ObjectPath(value.to!string));
 			return true;
 		default:
 			return false;

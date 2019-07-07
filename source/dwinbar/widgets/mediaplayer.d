@@ -23,20 +23,21 @@ import tinyevent;
 
 class MprisMediaPlayerWidget : Widget, IMouseWatch
 {
+	static immutable playerInterfaceName = interfaceName("org.mpris.MediaPlayer2.Player");
+	static immutable mprisObjectPath = ObjectPath("/org/mpris/MediaPlayer2");
+
 	this()
 	{
-		path = "/org/mpris/MediaPlayer2";
-		iface = "org.mpris.MediaPlayer2.Player";
+		path = ObjectPath("/org/mpris/MediaPlayer2");
 	}
 
-	this(FontFamily font, string dest, string path = "/org/mpris/MediaPlayer2",
-			string iface = "org.mpris.MediaPlayer2.Player")
+	this(FontFamily font)
 	{
 		this.font = font;
-		this.dest = dest;
-		this.path = path;
-		this.iface = iface;
 		sessionBus.attach();
+
+		registerNames();
+
 		prevIcon = read_image("res/icon/skip-previous.png").premultiply;
 		pauseIcon = read_image("res/icon/pause.png").premultiply;
 		playIcon = read_image("res/icon/play.png").premultiply;
@@ -49,6 +50,9 @@ class MprisMediaPlayerWidget : Widget, IMouseWatch
 		this.font = config.bar.fontFamily;
 
 		sessionBus.attach();
+
+		registerNames();
+
 		prevIcon = read_image("res/icon/skip-previous.png").premultiply;
 		pauseIcon = read_image("res/icon/pause.png").premultiply;
 		playIcon = read_image("res/icon/play.png").premultiply;
@@ -60,12 +64,6 @@ class MprisMediaPlayerWidget : Widget, IMouseWatch
 	{
 		switch (property)
 		{
-		case "dest":
-			dest = value.to!string;
-			return true;
-		case "spotify":
-			spotify = value.to!bool;
-			return true;
 		default:
 			return false;
 		}
@@ -75,7 +73,7 @@ class MprisMediaPlayerWidget : Widget, IMouseWatch
 	{
 		if (!mpInterface || !playerInterface)
 			return 0;
-		return 24 * 3 + 8 + cast(int) ceil(measureText(cast() font, 1, label)[0]);
+		return 24 * 3 + 8 + min(400, cast(int) ceil(measureText(cast() font, 1, label)[0]));
 	}
 
 	override int height(bool) const
@@ -103,17 +101,13 @@ class MprisMediaPlayerWidget : Widget, IMouseWatch
 		if (songLength != Duration.zero)
 		{
 			float progress = this.progress.peek.total!"usecs" / cast(float) songLength.total!"usecs";
-			stderr.writeln("Progress: ", progress);
+			// stderr.writeln("Progress: ", progress);
 			int width = cast(int)(canvas.w * progress);
 			if (width >= 0 && width <= canvas.w)
 			{
 				if (width > 1)
-					canvas.fillRect(1, canvas.h - 3, width - 1, 1, cast(ubyte[4])[
-							0xFF, 0x65, 0x00, 0xFF
-							]);
-				canvas.fillRect(0, canvas.h - 2, width, 2, cast(ubyte[4])[
-						0xFF, 0x65, 0x00, 0xFF
-						]);
+					canvas.fillRect(1, canvas.h - 3, width - 1, 1, focusStripeColor);
+				canvas.fillRect(0, canvas.h - 2, width, 2, focusStripeColor);
 			}
 		}
 
@@ -129,19 +123,8 @@ class MprisMediaPlayerWidget : Widget, IMouseWatch
 
 	bool ensureConnection()
 	{
-		if (mpInterface && playerInterface)
-			return true;
-
-		try
-		{
-			mpInterface = new PathIface(sessionBus.conn, dest, path, "org.freedesktop.DBus.Properties");
-			playerInterface = new PathIface(sessionBus.conn, dest, path, iface);
-			return true;
-		}
-		catch (Exception)
-		{
-			return false;
-		}
+		searchActivePlayer();
+		return activeName.length && mpInterface && playerInterface;
 	}
 
 	void play()
@@ -202,7 +185,7 @@ class MprisMediaPlayerWidget : Widget, IMouseWatch
 
 			if (status.is_playing && !progress.running)
 				progress.start();
-			else if (progress.running)
+			else if (!status.is_playing && progress.running)
 				progress.stop();
 			tick = 0;
 		}
@@ -214,13 +197,17 @@ class MprisMediaPlayerWidget : Widget, IMouseWatch
 
 		try
 		{
-			auto song = mpInterface.Get(iface, "Metadata").to!(Variant!DBusAny[string]);
-			const newCanNext = mpInterface.Get(iface, "CanGoNext").to!bool;
-			const newCanPrev = mpInterface.Get(iface, "CanGoPrevious").to!bool;
-			const newCanPlay = mpInterface.Get(iface, "CanPlay").to!bool;
-			const newCanPause = mpInterface.Get(iface, "CanPause").to!bool;
-			const newIsPlaying = mpInterface.Get(iface, "PlaybackStatus").to!string == "Playing";
-			const newLocation = mpInterface.Get(iface, "Position").to!long;
+			Variant!DBusAny[string] song;
+			auto rawMeta = mpInterface.Get(playerInterfaceName, "Metadata");
+			song = rawMeta.to!(Variant!DBusAny[string]);
+			const newCanNext = mpInterface.Get(playerInterfaceName, "CanGoNext").to!bool;
+			const newCanPrev = mpInterface.Get(playerInterfaceName, "CanGoPrevious").to!bool;
+			const newCanPlay = mpInterface.Get(playerInterfaceName, "CanPlay").to!bool;
+			const newCanPause = mpInterface.Get(playerInterfaceName, "CanPause").to!bool;
+			const newIsPlaying = mpInterface.Get(playerInterfaceName,
+					"PlaybackStatus").to!string == "Playing";
+			auto pos = mpInterface.Get(playerInterfaceName, "Position").to!(Variant!DBusAny);
+			const newLocation = pos.data.typeIsIntegral ? pos.data.to!long : 0;
 
 			if (newLocation != 0)
 			{
@@ -263,7 +250,12 @@ class MprisMediaPlayerWidget : Widget, IMouseWatch
 		string song;
 
 		if (artist)
-			song = artist.data.to!(string[]).join(", ") ~ " - ";
+		{
+			if (artist.data.type == 'a' && artist.data.signature == "s")
+				song = artist.data.to!(string[]).join(", ") ~ " - ";
+			else if (artist.data.type == 's')
+				song = artist.data.to!string ~ " - ";
+		}
 
 		if (title)
 			song ~= title.data.get!string;
@@ -316,16 +308,116 @@ class MprisMediaPlayerWidget : Widget, IMouseWatch
 	{
 	}
 
+	void changeName(string owner, string old, string new_)
+	{
+		if (!owner.isMprisName)
+			return;
+
+		if (!old.length && new_.length)
+			addName(owner);
+		else if (old.length && !new_.length)
+			removeName(owner);
+	}
+
+	void addName(string name)
+	{
+		stderr.writeln("Added name: ", name);
+		if (!names.canFind(name))
+			names ~= name;
+	}
+
+	void removeName(string name)
+	{
+		stderr.writeln("Removed name: ", name);
+		names = names.remove!(a => a == name);
+
+		if (name == activeName)
+		{
+			activeName = null;
+			mpInterface = null;
+			playerInterface = null;
+
+			searchActivePlayer();
+		}
+	}
+
+	void registerNames()
+	{
+		sessionBus.onNameChange(&changeName);
+		names = sessionBus.listNames().filter!isMprisName.array;
+		searchActivePlayer();
+	}
+
+	void searchActivePlayer()
+	{
+		if (activeName.length && mpInterface)
+		{
+			try
+			{
+				if (mpInterface.Get(playerInterfaceName, "PlaybackStatus").to!string == "Playing")
+					return;
+			}
+			catch (Exception e)
+			{
+				stderr.writeln("Disconnecting player ", activeName, ": ", e.msg);
+				activeName = null;
+				mpInterface = null;
+				playerInterface = null;
+			}
+		}
+
+		foreach (name; names)
+		{
+			auto i = new PathIface(sessionBus.conn, busName(name), mprisObjectPath,
+					interfaceName("org.freedesktop.DBus.Properties"));
+
+			string playbackStatus;
+
+			try
+			{
+				playbackStatus = i.Get(playerInterfaceName, "PlaybackStatus").to!string;
+			}
+			catch (Exception e)
+			{
+				names = names.remove!(a => a == name);
+				stderr.writeln(name, " is not a valid mpris player! ", e.msg);
+				break;
+			}
+
+			if (playbackStatus == "Playing")
+			{
+				activeName = name;
+				mpInterface = i;
+				playerInterface = new PathIface(sessionBus.conn, busName(name),
+						mprisObjectPath, playerInterfaceName);
+				break;
+			}
+		}
+	}
+
+	bool spotify() const @property
+	{
+		return activeName == "org.mpris.MediaPlayer2.spotify";
+	}
+
 private:
 	FontFamily font;
 	PathIface mpInterface, playerInterface;
-	string dest, path, iface;
+	BusName dest;
+	ObjectPath path;
 	string label;
 	bool isPlaying, canPlay, canPause, canPrev, canNext, force;
 	StopWatch progress;
 	Duration songLength;
-	bool spotify;
 	IFImage prevIcon, pauseIcon, playIcon, nextIcon;
 	StopWatch updateClock;
 	int tick;
+
+	string[] names;
+	string activeName;
+}
+
+bool isMprisName(string name)
+{
+	return name.startsWith("org.mpris.MediaPlayer2.");
 }

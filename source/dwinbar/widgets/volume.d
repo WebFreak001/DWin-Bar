@@ -9,7 +9,7 @@ import x11.Xlib;
 import x11.X;
 
 import std.conv;
-import std.datetime;
+import std.datetime.stopwatch;
 import std.format;
 import std.math;
 import std.process;
@@ -32,7 +32,9 @@ float getVolume()
 
 void setVolume(float volume)
 {
-	execute(["pamixer", "--unmute", "--set-volume", (cast(int)(volume * 100)).to!string]);
+	execute([
+			"pamixer", "--unmute", "--set-volume", (cast(int)(volume * 100)).to!string
+			]);
 }
 
 void setMute()
@@ -120,7 +122,7 @@ class VolumeWidget : Widget, IMouseWatch
 	{
 		if (down || queueChange)
 		{
-			if (queueChange && changeTimer.peek.to!("msecs", int) >= 50)
+			if (queueChange && changeTimer.peek.total!"msecs" >= 50)
 			{
 				queueChange = false;
 				changeTimer.stop();

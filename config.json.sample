@@ -2,7 +2,7 @@
 	"fontPrimary": "Roboto:Medium",
 	"fontSecondary": "Roboto:Light",
 	"height": 32,
-	"spotify": { // or omit this block
+	"spotify": { // or omit this block, only needed for song progress in mpris widget with spotify
 		"clientId": "<obtain from spotify>",
 		"clientSecret": "<obtain from spotify>",
 		"redirectURL": "http://127.0.0.1:3007/spotify/auth"
@@ -14,11 +14,7 @@
 			"widgets": [
 				"dwinbar.widgets.clock.ClockWidget",
 				"dwinbar.widgets.volume.VolumeWidget",
-				{
-					"type": "dwinbar.widgets.mediaplayer.MprisMediaPlayerWidget",
-					"dest": "org.mpris.MediaPlayer2.spotify",
-					"spotify": true
-				},
+				"dwinbar.widgets.mediaplayer.MprisMediaPlayerWidget",
 				"dwinbar.widgets.phone_battery.PhoneBatteryWidget",
 				{
 					"type": "dwinbar.widgets.workspace.WorkspaceWidget",

@@ -13,7 +13,7 @@ import std.array;
 import std.stdio;
 import std.typecons;
 import std.exception;
-import std.datetime;
+import std.datetime.stopwatch;
 
 import tinyevent;
 
@@ -393,11 +393,11 @@ class NotificationsWidget : Widget, IWindowManager
 		router = new MessageRouter();
 		dbus = new NotificationServer(bar);
 		dbus.onWindowOpen ~= &onWindowOpen;
-		registerMethods(router, "/org/freedesktop/Notifications",
-				"org.freedesktop.Notifications", dbus);
+		registerMethods(router, ObjectPath("/org/freedesktop/Notifications"),
+				interfaceName("org.freedesktop.Notifications"), dbus);
 		std.stdio.writeln(router.callTable.byKey);
 		registerRouter(sessionBus.conn, router);
-		enforce(requestName(sessionBus.conn, "org.freedesktop.Notifications"));
+		enforce(requestName(sessionBus.conn, busName("org.freedesktop.Notifications")));
 	}
 
 	override int width(bool) const
@@ -423,7 +423,7 @@ class NotificationsWidget : Widget, IWindowManager
 	override void update(Bar bar)
 	{
 		frameTimer.stop();
-		int msecs = frameTimer.peek.to!("msecs", int);
+		int msecs = cast(int) frameTimer.peek.total!"msecs";
 		frameTimer.reset();
 		frameTimer.start();
 		updateDBus();

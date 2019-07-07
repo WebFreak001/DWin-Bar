@@ -8,6 +8,8 @@ import std.xml;
 
 struct KDEConnectDevice
 {
+	static immutable kdeBusName = busName("org.kde.kdeconnect");
+
 	string id;
 	PathIface properties;
 	PathIface device;
@@ -58,8 +60,9 @@ struct KDEConnectDevice
 		try
 		{
 			sessionBus.attach();
-			auto conn = new PathIface(sessionBus.conn, "org.kde.kdeconnect",
-					"/modules/kdeconnect/devices", "org.freedesktop.DBus.Introspectable");
+			auto conn = new PathIface(sessionBus.conn, kdeBusName,
+					ObjectPath("/modules/kdeconnect/devices"),
+					interfaceName("org.freedesktop.DBus.Introspectable"));
 
 			KDEConnectDevice[] ret;
 
@@ -68,13 +71,13 @@ struct KDEConnectDevice
 				string id = xml.tag.attr["name"];
 				try
 				{
-					auto path = "/modules/kdeconnect/devices/" ~ id;
-					PathIface properties = new PathIface(sessionBus.conn,
-							"org.kde.kdeconnect", path, "org.freedesktop.DBus.Properties");
-					PathIface device = new PathIface(sessionBus.conn,
-							"org.kde.kdeconnect", path, "org.kde.kdeconnect.device");
-					PathIface battery = new PathIface(sessionBus.conn,
-							"org.kde.kdeconnect", path, "org.kde.kdeconnect.device.battery");
+					auto path = ObjectPath("/modules/kdeconnect/devices/" ~ id);
+					PathIface properties = new PathIface(sessionBus.conn, kdeBusName,
+							path, interfaceName("org.freedesktop.DBus.Properties"));
+					PathIface device = new PathIface(sessionBus.conn, kdeBusName, path,
+							interfaceName("org.kde.kdeconnect.device"));
+					PathIface battery = new PathIface(sessionBus.conn, kdeBusName, path,
+							interfaceName("org.kde.kdeconnect.device.battery"));
 					ret ~= KDEConnectDevice(id, properties, device, battery);
 				}
 				catch (Exception e)

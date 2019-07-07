@@ -129,9 +129,9 @@ struct I3Utils
 			//dfmt off
 			ret ~= WorkspaceInfo(
 				workspace["name"].str,
-				workspace["visible"].type == JSON_TYPE.TRUE,
-				workspace["focused"].type == JSON_TYPE.TRUE,
-				workspace["urgent"].type == JSON_TYPE.TRUE,
+				workspace["visible"].boolean,
+				workspace["focused"].boolean,
+				workspace["urgent"].boolean,
 				workspace["output"].str
 			);
 			//dfmt on

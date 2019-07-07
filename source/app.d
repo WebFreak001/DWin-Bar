@@ -157,7 +157,7 @@ void loadPanel(ref Bar bar, Json[string] settings, PanelConfiguration panelConfi
 
 	// 	.add(new ClockWidget())
 	// 	// find using `dbus-send --print-reply --system --dest=org.freedesktop.UPower /org/freedesktop/UPower org.freedesktop.UPower.EnumerateDevices`
-	// 	//.add(new BatteryWidget(bar.fontFamily, "/org/freedesktop/UPower/devices/battery_BAT1"))
+	// 	//.add(new BatteryWidget(bar.fontFamily, ObjectPath("/org/freedesktop/UPower/devices/battery_BAT1")))
 	// 	//.add(new NotificationsWidget(&bar))
 	// 	.add(new VolumeWidget())
 	// 	.add(new MprisMediaPlayerWidget(bar.fontFamily, "org.mpris.MediaPlayer2.spotify"))
