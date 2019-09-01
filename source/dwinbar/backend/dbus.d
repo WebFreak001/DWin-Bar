@@ -3,6 +3,10 @@ module dwinbar.backend.dbus;
 public import ddbus;
 import ddbus.c_lib;
 
+import core.thread;
+import core.time;
+
+import std.datetime.stopwatch;
 import std.format;
 import std.string;
 import std.typecons;
@@ -42,15 +46,16 @@ struct ConnectionPool
 		connected = true;
 	}
 
-	void update()
+	void update(Duration timeout = Duration.zero)
 	{
 		if (!connected)
 			return;
-		if (!dbus_connection_read_write(conn.conn, 0))
+		if (!dbus_connection_read_write(conn.conn, cast(int) timeout.total!"msecs"))
 			throw new Exception("tick break");
 
 		do
 		{
+			dbus_connection_dispatch(conn.conn);
 			auto msg = dbus_connection_pop_message(conn.conn);
 			if (msg == null)
 				break;
@@ -115,8 +120,37 @@ struct ConnectionPool
 ConnectionPool sessionBus = ConnectionPool(DBusBusType.DBUS_BUS_SESSION);
 ConnectionPool systemBus = ConnectionPool(DBusBusType.DBUS_BUS_SYSTEM);
 
-void updateDBus()
+void updateDBus(Duration timeout = Duration.zero)
 {
-	sessionBus.update();
-	systemBus.update();
+	if (sessionBus.connected && systemBus.connected)
+	{
+		sessionBus.update(timeout / 2);
+		systemBus.update(timeout / 2);
+	}
+	else if (sessionBus.connected)
+	{
+		sessionBus.update(timeout);
+	}
+	else if (systemBus.connected)
+	{
+		systemBus.update(timeout);
+	}
+}
+
+void updateDBusWaiting(Duration waitAmount)
+{
+	if (waitAmount == Duration.zero)
+		return updateDBus();
+
+	StopWatch total;
+	total.start();
+	while (total.peek < waitAmount)
+	{
+		StopWatch sw;
+		sw.start();
+		updateDBus(waitAmount);
+		sw.stop();
+		if (sw.peek < 5.msecs && waitAmount - total.peek >= 5.msecs)
+			Thread.sleep(5.msecs - sw.peek);
+	}
 }

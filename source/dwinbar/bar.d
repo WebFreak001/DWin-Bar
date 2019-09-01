@@ -2,8 +2,9 @@ module dwinbar.bar;
 
 import derelict.freetype.ft;
 
-import dwinbar.backend.xbackend;
+import dwinbar.backend.dbus;
 import dwinbar.backend.icongen;
+import dwinbar.backend.xbackend;
 
 import dwinbar.widget;
 
@@ -88,6 +89,14 @@ struct PositionedWidget
 		return mx > x - margin / 2 && mx <= x + w + margin / 2;
 	}
 }
+
+//static immutable ubyte[4] bgColor = [0, 0, 0, 0xB0];
+//static immutable ubyte[4] bgHover = [0x20, 0x20, 0x20, 0xB0];
+//static immutable ubyte[4] focusStripeColor = [0xFF, 0x98, 0, 0xFF];
+
+static immutable ubyte[4] bgColor = [0x0C, 0x02, 0x16, 0xB0];
+static immutable ubyte[4] bgHover = [0x1B, 0x05, 0x1E, 0xB0];
+static immutable ubyte[4] focusStripeColor = [0x74, 0x45, 0xFF, 0xFF];
 
 struct WidgetManager
 {
@@ -177,10 +186,7 @@ class Panel
 		background.h = height;
 		background.c = ColFmt.RGBA;
 		background.pixels = new ubyte[width * height * 4];
-		version (BigEndian)
-			(cast(uint[]) background.pixels)[] = 0x000000B0;
-		else
-			(cast(uint[]) background.pixels)[] = 0xB0000000;
+		(cast(uint[]) background.pixels)[] = (cast(uint)bgColor[3] << 24) | (cast(uint)bgColor[2] << 16) | (cast(uint)bgColor[1] << 8) | bgColor[0];
 		backgroundImage = XCreateImage(x.display, x.visual, 32, ZPixmap, 0,
 				cast(char*) background.pixels.ptr, width, height, 32, 0);
 	}
@@ -286,7 +292,7 @@ class Panel
 		auto s = height.iconSizeForHeight;
 		background.fillRect!4(config.barBaselinePadding, 0,
 				cast(int) lastApps.length * (s + config.appIconPadding * 2 + config.appBaselineMargin),
-				height, [0, 0, 0, 0xB0]);
+				height, bgColor);
 		int pos = config.barBaselinePadding + config.appBaselineMargin / 2;
 		foreach (ref app; apps)
 		{
@@ -298,8 +304,7 @@ class Panel
 			else
 				background.draw(defaultAppIcon, pos + config.appIconPadding, y, s, 0, active ? 200 : 128);
 			if (active)
-				background.fillRect!4(pos, height - config.focusStripeHeight,
-						s + config.appIconPadding * 2, config.focusStripeHeight, [0xFF, 0x98, 0, 0xFF]);
+				background.fillRect!4(pos, height - config.focusStripeHeight, s + config.appIconPadding * 2, config.focusStripeHeight, focusStripeColor);
 			pos += s + config.appIconPadding * 2 + config.appBaselineMargin;
 		}
 		XPutImage(x.display, window, gc, backgroundImage, config.barBaselinePadding,
@@ -337,12 +342,11 @@ class Panel
 				if (widget.hasHover)
 				{
 					background.fillRect!4(widget.x - config.widgetBaselineMargin / 2, 0,
-							widget.w + config.widgetBaselineMargin, height, hovered ? [0x20,
-							0x20, 0x20, 0xB0] : [0, 0, 0, 0xB0]);
+							widget.w + config.widgetBaselineMargin, height, hovered ? bgHover : bgColor);
 				}
 				else
 					background.fillRect!4(widget.x - config.widgetBaselineMargin / 2, 0,
-							widget.w + config.widgetBaselineMargin, height, [0, 0, 0, 0xB0]);
+							widget.w + config.widgetBaselineMargin, height, bgColor);
 				background.draw(texture, widget.x, widget.y);
 				XPutImage(x.display, window, gc, backgroundImage,
 						widget.x - config.widgetBaselineMargin / 2, 0, widget.x - config.widgetBaselineMargin / 2,
@@ -353,7 +357,7 @@ class Panel
 		}
 		if (toClear > 0)
 		{
-			background.fillRect!4(lastX - toClear, 0, toClear, height, [0, 0, 0, 0xB0]);
+			background.fillRect!4(lastX - toClear, 0, toClear, height, bgColor);
 			XPutImage(x.display, window, gc, backgroundImage, lastX - toClear, 0,
 					lastX - toClear, 0, toClear, height);
 		}
@@ -718,7 +722,8 @@ struct Bar
 			}
 			foreach (ref panel; panels)
 				panel.update(this);
-			Thread.sleep(20.msecs);
+
+			updateDBusWaiting(20.msecs);
 		}
 	}
 }

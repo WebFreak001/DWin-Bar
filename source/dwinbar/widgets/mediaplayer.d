@@ -18,8 +18,45 @@ import std.typecons;
 import std.uni;
 
 import ddbus.exception;
+import ddbus.util;
 
 import tinyevent;
+
+class ActiveMprisController
+{
+	BusName GetActiveBusName()
+	{
+		return busName(widget.activeName);
+	}
+
+	void Play()
+	{
+		widget.play();
+	}
+
+	void Pause()
+	{
+		widget.pause();
+	}
+
+	void PlayPause()
+	{
+		widget.playPause();
+	}
+
+	void Previous()
+	{
+		widget.previous();
+	}
+
+	void Next()
+	{
+		widget.next();
+	}
+
+private:
+	MprisMediaPlayerWidget widget;
+}
 
 class MprisMediaPlayerWidget : Widget, IMouseWatch
 {
@@ -28,11 +65,13 @@ class MprisMediaPlayerWidget : Widget, IMouseWatch
 
 	this()
 	{
-		path = ObjectPath("/org/mpris/MediaPlayer2");
+		prepare();
 	}
 
 	this(FontFamily font)
 	{
+		this();
+
 		this.font = font;
 		sessionBus.attach();
 
@@ -45,10 +84,17 @@ class MprisMediaPlayerWidget : Widget, IMouseWatch
 		updateClock.start();
 	}
 
+	private final void prepare()
+	{
+		activeController = new ActiveMprisController();
+		activeController.widget = this;
+	}
+
 	override void loadBase(WidgetConfig config)
 	{
-		this.font = config.bar.fontFamily;
+		prepare();
 
+		this.font = config.bar.fontFamily;
 		sessionBus.attach();
 
 		registerNames();
@@ -162,6 +208,8 @@ class MprisMediaPlayerWidget : Widget, IMouseWatch
 
 	void next()
 	{
+		if (!ensureConnection)
+			return;
 		playerInterface.Next();
 		progress.reset();
 	}
@@ -207,7 +255,7 @@ class MprisMediaPlayerWidget : Widget, IMouseWatch
 			const newIsPlaying = mpInterface.Get(playerInterfaceName,
 					"PlaybackStatus").to!string == "Playing";
 			auto pos = mpInterface.Get(playerInterfaceName, "Position").to!(Variant!DBusAny);
-			const newLocation = pos.data.typeIsIntegral ? pos.data.to!long : 0;
+			const newLocation = pos.data.type.dbusIsIntegral ? pos.data.to!long : 0;
 
 			if (newLocation != 0)
 			{
@@ -343,6 +391,12 @@ class MprisMediaPlayerWidget : Widget, IMouseWatch
 
 	void registerNames()
 	{
+		MessageRouter router = new MessageRouter();
+		registerMethods(router, ObjectPath("/org/webfreak/DWinBar"),
+				interfaceName("org.webfreak.DWinBar.ActiveMprisController"), activeController);
+		registerRouter(sessionBus.conn, router);
+		enforce(requestName(sessionBus.conn, busName("org.webfreak.DWinBar")));
+
 		sessionBus.onNameChange(&changeName);
 		names = sessionBus.listNames().filter!isMprisName.array;
 		searchActivePlayer();
@@ -404,7 +458,6 @@ private:
 	FontFamily font;
 	PathIface mpInterface, playerInterface;
 	BusName dest;
-	ObjectPath path;
 	string label;
 	bool isPlaying, canPlay, canPause, canPrev, canNext, force;
 	StopWatch progress;
@@ -412,6 +465,7 @@ private:
 	IFImage prevIcon, pauseIcon, playIcon, nextIcon;
 	StopWatch updateClock;
 	int tick;
+	ActiveMprisController activeController;
 
 	string[] names;
 	string activeName;
