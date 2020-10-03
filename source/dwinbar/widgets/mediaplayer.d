@@ -255,7 +255,7 @@ class MprisMediaPlayerWidget : Widget, IMouseWatch
 			const newIsPlaying = mpInterface.Get(playerInterfaceName,
 					"PlaybackStatus").to!string == "Playing";
 			auto pos = mpInterface.Get(playerInterfaceName, "Position").to!(Variant!DBusAny);
-			const newLocation = pos.data.type.dbusIsIntegral ? pos.data.to!long : 0;
+			const newLocation = pos.data.typeIsIntegral ? pos.data.to!long : 0;
 
 			if (newLocation != 0)
 			{
