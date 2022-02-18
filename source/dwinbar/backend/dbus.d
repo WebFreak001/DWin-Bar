@@ -15,7 +15,7 @@ struct SignalSubscription
 {
 	const(char)* rule;
 	const(char)* iface, signal;
-	void delegate(Message msg) callback;
+	void delegate(scope ref Message msg) callback;
 }
 
 struct ConnectionPool
@@ -59,27 +59,20 @@ struct ConnectionPool
 			auto msg = dbus_connection_pop_message(conn.conn);
 			if (msg == null)
 				break;
-
-			bool handled;
-			scope (exit)
-				if (!handled)
-					dbus_message_unref(msg);
+			scope message = Message(msg);
 
 			foreach (sub; signals)
 			{
 				if (dbus_message_is_signal(msg, sub.iface, sub.signal))
-				{
-					handled = true;
-					sub.callback(Message(msg));
-					// no break because we might have multiple signals handling this
-				}
+					sub.callback(message);
+				// no break because we might have multiple signals handling this
 			}
 		}
 		while (true);
 	}
 
 	bool onSignal(BusName sender, ObjectPath path, InterfaceName iface,
-			string member, void delegate(Message msg) callback)
+			string member, void delegate(scope ref Message msg) callback)
 	{
 		if (!connected)
 			throw new Exception("Attempted to subscribe to signal when not connected");
@@ -110,7 +103,7 @@ struct ConnectionPool
 
 	bool onNameChange(void delegate(string, string, string) callback)
 	{
-		return onSignal(dbusName, dbusPath, dbusIface, "NameOwnerChanged", (msg) {
+		return onSignal(dbusName, dbusPath, dbusIface, "NameOwnerChanged", (scope ref msg) {
 			auto t = msg.readTuple!(Tuple!(string, string, string));
 			callback(t[0].idup, t[1].idup, t[2].idup);
 		});
