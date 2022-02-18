@@ -294,24 +294,32 @@ class MprisMediaPlayerWidget : Widget, IMouseWatch
 	{
 		auto artist = "xesam:artist" in metadata;
 		auto title = "xesam:title" in metadata;
+		auto nowplaying = "vlc:nowplaying" in metadata;
 
 		string song;
 
-		if (artist)
+		if (nowplaying && nowplaying.data.type == 's')
 		{
-			if (artist.data.type == 'a' && artist.data.signature == "s")
-				song = artist.data.to!(string[]).join(", ") ~ " - ";
-			else if (artist.data.type == 's')
-				song = artist.data.to!string ~ " - ";
+			song = nowplaying.data.to!string;
 		}
+		else
+		{
+			if (artist)
+			{
+				if (artist.data.type == 'a' && artist.data.signature == "s")
+					song = artist.data.to!(string[]).join(", ") ~ " - ";
+				else if (artist.data.type == 's')
+					song = artist.data.to!string ~ " - ";
+			}
 
-		if (title)
-			song ~= title.data.get!string;
-		else if (song.length)
-			song.length -= 3;
+			if (title)
+				song ~= title.data.get!string;
+			else if (song.length)
+				song.length -= 3;
 
-		if (!song.length)
-			song = "Unknown";
+			if (!song.length)
+				song = "Unknown";
+		}
 
 		if (song == label)
 			return false;
@@ -361,6 +369,8 @@ class MprisMediaPlayerWidget : Widget, IMouseWatch
 		if (!owner.isMprisName)
 			return;
 
+		stderr.writeln("Name change: ", owner, ": ", old, " -> ", new_);
+
 		if (!old.length && new_.length)
 			addName(owner);
 		else if (old.length && !new_.length)
@@ -395,7 +405,7 @@ class MprisMediaPlayerWidget : Widget, IMouseWatch
 		registerMethods(router, ObjectPath("/org/webfreak/DWinBar"),
 				interfaceName("org.webfreak.DWinBar.ActiveMprisController"), activeController);
 		registerRouter(sessionBus.conn, router);
-		enforce(requestName(sessionBus.conn, busName("org.webfreak.DWinBar")));
+		enforce(requestName(sessionBus.conn, busName("org.webfreak.DWinBar")), "Failed owning name org.webfreak.DWinBar");
 
 		sessionBus.onNameChange(&changeName);
 		names = sessionBus.listNames().filter!isMprisName.array;
